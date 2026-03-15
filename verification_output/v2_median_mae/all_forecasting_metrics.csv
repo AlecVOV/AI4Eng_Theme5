@@ -1,0 +1,9 @@
+target,cluster,model,rmse,mae,mape,order,window_size,epochs_trained,final_train_loss,final_val_loss,train_sequences,test_sequences,features,loss_function
+target_latency,0,ARIMA,38.5244,22.8714,26.06,"(0, 1, 1)",,,,,,,,
+target_latency,1,ARIMA,70.7166,59.2273,46.37,"(0, 1, 1)",,,,,,,,
+target_throughput,0,ARIMA,15.5735,9.1256,19.22,"(1, 0, 0)",,,,,,,,
+target_throughput,1,ARIMA,5.0527,3.9448,16.64,"(1, 1, 2)",,,,,,,,
+target_latency,0,LSTM,22.426,17.9725,20.81,,6.0,12.0,0.054117,0.139207,120.0,31.0,"['svr1', 'latency_lag_1h', 'latency_rolling_3h', 'latency_rolling_6h', 'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos']",mae
+target_latency,1,LSTM,56.5439,46.9991,30.77,,6.0,13.0,0.202588,0.173183,102.0,26.0,"['svr1', 'latency_lag_1h', 'latency_rolling_3h', 'latency_rolling_6h', 'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos']",mae
+target_throughput,0,LSTM,15.2819,9.4158,22.13,,6.0,12.0,0.109849,0.114178,120.0,31.0,"['upload_bitrate_mbps', 'download_bitrate_mbps', 'throughput_lag_1h', 'throughput_rolling_3h', 'throughput_rolling_6h', 'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos']",mae
+target_throughput,1,LSTM,5.0152,3.9218,16.03,,6.0,29.0,0.170217,0.146868,102.0,26.0,"['upload_bitrate_mbps', 'download_bitrate_mbps', 'throughput_lag_1h', 'throughput_rolling_3h', 'throughput_rolling_6h', 'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos']",mae

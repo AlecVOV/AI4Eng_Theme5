@@ -1,0 +1,161 @@
+======================================================================
+PHASE 0: DATA SUMMARY
+======================================================================
+clustering_data.csv: 297 rows x 8 cols
+forecasting_data.csv: 5641 rows x 29 cols
+Clustering columns: ['square_id', 'latitude', 'longitude', 'speed', 'svr1', 'upload_bitrate_mbps', 'download_bitrate_mbps', 'measurement_count']
+Forecasting columns: ['square_id', 'datetime_hour', 'observation_hour', 'hour_of_day', 'day_of_week', 'date', 'latitude', 'longitude', 'speed', 'svr1', 'svr3', 'upload_bitrate_mbps', 'download_bitrate_mbps', 'latency_lag_1h', 'throughput_lag_1h', 'latency_lag_2h', 'throughput_lag_2h', 'latency_lag_3h', 'throughput_lag_3h', 'latency_rolling_3h', 'throughput_rolling_3h', 'latency_rolling_6h', 'throughput_rolling_6h', 'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos', 'target_latency', 'target_throughput']
+Clustering NaN count: 0
+Forecasting NaN count: 0
+
+Clustering data stats:
+       latitude  longitude   speed    svr1  upload_bitrate_mbps  download_bitrate_mbps  measurement_count
+count    297.00     297.00  297.00  297.00               297.00                 297.00             297.00
+mean     -37.74     144.80   30.14  125.05                 9.79                  18.67            7022.65
+std        0.04       0.04   28.47   95.80                 4.20                   9.92            8182.87
+min      -37.83     144.72    3.26   18.18                 0.00                   0.00               1.00
+25%      -37.78     144.77    7.67   55.19                 7.50                  14.56             586.00
+50%      -37.74     144.79   14.49   95.13                10.11                  17.94            5071.00
+75%      -37.71     144.82   49.27  173.53                12.74                  21.61           10646.00
+max      -37.63     144.92  100.53  807.00                23.63                  72.11           75513.00
+
+Forecasting data stats:
+       observation_hour  hour_of_day  day_of_week  latitude  longitude    speed     svr1     svr3  upload_bitrate_mbps  download_bitrate_mbps  latency_lag_1h  throughput_lag_1h  latency_lag_2h  throughput_lag_2h  latency_lag_3h  throughput_lag_3h  latency_rolling_3h  throughput_rolling_3h  latency_rolling_6h  throughput_rolling_6h  hour_sin  hour_cos  dow_sin  dow_cos  target_latency  target_throughput
+count           5641.00      5641.00      5641.00   5641.00    5641.00  5641.00  5641.00  5641.00              5641.00                5641.00         5641.00            5641.00         5641.00            5641.00         5641.00            5641.00             5641.00                5641.00             5641.00                5641.00   5641.00   5641.00  5641.00  5641.00         5641.00            5641.00
+mean             353.97        11.79         2.13    -37.76     144.79    44.84   116.82   144.86                 9.87                  19.02          125.59              28.55          123.96              28.36          123.33              28.03              126.31                  28.67              125.40                  28.38     -0.12      0.80     0.36     0.10          130.36              29.79
+std              613.23         9.99         1.76      0.03       0.03    33.45   109.81   111.90                 5.51                  13.41          106.84              16.69          106.27              16.75          106.13              16.70               85.93                  11.89               78.21                  10.22      0.55      0.22     0.57     0.73          110.69              16.98
+min                1.00         0.00         0.00    -37.83     144.72     0.18    11.20    13.91                 0.00                   0.00            0.00               0.00            0.00               0.00            0.00               0.00               23.46                   0.00               23.46                   0.00     -1.00     -0.00    -0.78    -0.90           20.96               0.00
+25%               35.00         2.00         1.00    -37.78     144.77     9.98    41.10    56.41                 6.18                  10.73           53.33              19.69           52.86              19.60           52.28              19.19               62.40                  21.13               64.41                  21.98     -0.50      0.71     0.00    -0.90           55.27              20.37
+50%               99.00        19.00         2.00    -37.76     144.79    41.39    72.00   119.80                10.24                  16.67           85.09              26.86           82.98              26.65           82.63              26.28               97.55                  27.76              102.32                  28.04     -0.26      0.87     0.43     0.62           87.93              27.65
+75%              334.00        22.00         3.00    -37.74     144.82    76.13   155.23   193.79                13.49                  24.60          162.57              36.26          161.01              36.04          160.32              35.72              167.17                  35.34              166.99                  34.58      0.50      0.97     0.78     0.62          168.11              37.21
+max             4884.00        23.00         6.00    -37.68     144.88   102.11   972.00   969.00                40.50                  94.15          969.50             117.88          969.50             117.88          969.50             117.88              729.62                  94.90              729.62                  84.95      0.97      1.00     0.97     1.00          969.50             117.88
+
+======================================================================
+PHASE 1: CLUSTERING
+======================================================================
+
+[1.1] Total zones before filtering: 297
+[1.1] Zones after filtering (measurement_count >= 50): 257
+[1.1] Zones removed: 40
+
+[1.2] Clustering features: ['svr1', 'upload_bitrate_mbps', 'download_bitrate_mbps', 'latitude', 'longitude']
+[1.2] Feature matrix shape: (257, 5)
+[1.2] Feature ranges:
+       svr1: min=22.4413, max=413.3604, mean=124.7752, std=82.1685
+       upload_bitrate_mbps: min=0.0000, max=16.8770, mean=10.1415, std=3.2108
+       download_bitrate_mbps: min=0.0000, max=60.9043, mean=18.5887, std=6.4935
+       latitude: min=-37.8278, max=-37.6347, mean=-37.7504, std=0.0362
+       longitude: min=144.7183, max=144.8751, mean=144.7930, std=0.0327
+
+[1.3] StandardScaler applied. Post-scaling verification:
+       svr1: mean=0.000000, std=1.000000
+       upload_bitrate_mbps: mean=0.000000, std=1.000000
+       download_bitrate_mbps: mean=-0.000000, std=1.000000
+       latitude: mean=-0.000000, std=1.000000
+       longitude: mean=0.000000, std=1.000000
+
+[1.4] Searching K=2..10
+       K=2: silhouette=0.2514, DB=1.5076, CH=91.64, sizes=[159, 98]
+       K=3: silhouette=0.2172, DB=1.4981, CH=78.13, sizes=[93, 84, 80]
+       K=4: silhouette=0.2337, DB=1.3255, CH=71.03, sizes=[34, 72, 78, 73]
+       K=5: silhouette=0.2461, DB=1.2367, CH=67.60, sizes=[46, 73, 41, 64, 33]
+       K=6: silhouette=0.2381, DB=1.3093, CH=67.08, sizes=[37, 44, 40, 57, 33, 46]
+       K=7: silhouette=0.2311, DB=1.2344, CH=64.59, sizes=[35, 56, 36, 31, 47, 18, 34]
+       K=8: silhouette=0.2357, DB=1.2314, CH=63.32, sizes=[30, 30, 41, 46, 51, 34, 15, 10]
+       K=9: silhouette=0.2456, DB=1.1959, CH=60.57, sizes=[29, 26, 36, 38, 6, 26, 35, 14, 47]
+       K=10: silhouette=0.2377, DB=1.2875, CH=58.03, sizes=[45, 38, 23, 35, 5, 21, 19, 32, 10, 29]
+
+[1.4] Best K by silhouette: 2
+
+[1.5] Running K-Means with K=2
+
+[1.6] DBSCAN parameter search
+[1.6] Best DBSCAN: eps=0.4, min_samples=3
+       Clusters: 5, Noise: 240
+
+[1.7] Cluster Profiles (K-Means)
+                svr1_mean  svr1_std  svr1_min  svr1_max  upload_bitrate_mbps_mean  upload_bitrate_mbps_std  upload_bitrate_mbps_min  upload_bitrate_mbps_max  download_bitrate_mbps_mean  download_bitrate_mbps_std  download_bitrate_mbps_min  download_bitrate_mbps_max  speed_mean  speed_std  speed_min  speed_max
+kmeans_cluster                                                                                                                                                                                                                                                                                                        
+0                   76.67     36.35     22.44    270.08                     12.16                     1.90                     8.05                    16.88                       20.35                       6.91                        0.0                       60.9       24.52      21.31       3.90      87.31
+1                  202.83     76.07     55.19    413.36                      6.86                     1.97                     0.00                     9.84                       15.73                       4.55                        0.0                       27.0       20.76      24.35       3.26      96.19
+       Cluster 0: Low Latency / High Throughput (n=159)
+       Cluster 1: High Latency / Low Throughput (n=98)
+
+[1.8] Final K-Means Evaluation:
+       Silhouette Score:        0.2514
+       Davies-Bouldin Index:    1.5076
+       Calinski-Harabasz Index: 91.64
+
+[1.9] Per-cluster silhouette:
+       Cluster 0 (Low Latency / High Throughput): mean=0.2528, negative=0.6%
+       Cluster 1 (High Latency / Low Throughput): mean=0.249, negative=0.0%
+
+======================================================================
+PHASE 2: FORECASTING
+======================================================================
+
+[2.1] Time-series rows after merge: 5628 (from 5641)
+[2.1] Zones dropped (not in clustering): 7
+
+[2.2] Cluster-level hourly records: 291
+       Cluster 0: 157 hourly records
+       Cluster 1: 134 hourly records
+
+[2.3] Temporal split:
+       Train: 208 rows (2022-07-03 19:00:00 to 2022-07-18 00:00:00)
+       Test:  65 rows (2022-07-19 00:00:00 to 2022-07-22 02:00:00)
+
+[2.4] Winsorization (99th percentile capping)
+       Latency cap (99th pct of train):    305.94 ms
+       Throughput cap (99th pct of train):  107.91 Mbps
+
+       Clipping latency columns (cap=305.94):
+         svr1: train=1 clipped (0.5%), test=0 clipped (0.0%), max: 307.5 -> 305.9
+         target_latency: train=3 clipped (1.4%), test=0 clipped (0.0%), max: 387.9 -> 305.9
+         latency_lag_1h: no values clipped
+         latency_rolling_3h: no values clipped
+         latency_rolling_6h: no values clipped
+
+       Clipping throughput columns (cap=107.91):
+         upload_bitrate_mbps: no values clipped
+         download_bitrate_mbps: no values clipped
+         target_throughput: train=3 clipped (1.4%), test=1 clipped (1.5%), max: 113.5 -> 107.9
+         throughput_lag_1h: train=1 clipped (0.5%), test=0 clipped (0.0%), max: 109.8 -> 107.9
+         throughput_rolling_3h: no values clipped
+         throughput_rolling_6h: no values clipped
+
+       Winsorization summary saved to forecasting/winsorization_summary.csv
+
+[2.5] ARIMA Forecasting
+
+  --- target_latency ---
+  Cluster 0: order=(0, 1, 1), RMSE=39.53, MAE=27.23, MAPE=29.0%
+  Cluster 1: order=(0, 1, 1), RMSE=69.47, MAE=59.02, MAPE=37.6%
+
+  --- target_throughput ---
+  Cluster 0: order=(0, 0, 2), RMSE=15.23, MAE=8.96, MAPE=18.7%
+  Cluster 1: order=(0, 1, 1), RMSE=5.93, MAE=4.61, MAPE=17.9%
+
+[2.6] LSTM Forecasting
+
+  --- target_latency ---
+  Cluster 0: features=['svr1', 'latency_lag_1h', 'latency_rolling_3h', 'latency_rolling_6h', 'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos']
+       window=6, sequences=151, train=120, test=31
+       epochs=11, train_loss=0.007901, val_loss=0.041919
+       RMSE=28.43, MAE=24.38, MAPE=27.8%
+  Cluster 1: features=['svr1', 'latency_lag_1h', 'latency_rolling_3h', 'latency_rolling_6h', 'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos']
+       window=6, sequences=128, train=102, test=26
+       epochs=14, train_loss=0.044925, val_loss=0.066150
+       RMSE=49.51, MAE=38.50, MAPE=22.4%
+
+  --- target_throughput ---
+  Cluster 0: features=['upload_bitrate_mbps', 'download_bitrate_mbps', 'throughput_lag_1h', 'throughput_rolling_3h', 'throughput_rolling_6h', 'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos']
+       window=6, sequences=151, train=120, test=31
+       epochs=12, train_loss=0.049042, val_loss=0.017770
+       RMSE=15.56, MAE=11.39, MAPE=29.8%
+  Cluster 1: features=['upload_bitrate_mbps', 'download_bitrate_mbps', 'throughput_lag_1h', 'throughput_rolling_3h', 'throughput_rolling_6h', 'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos']
+       window=6, sequences=128, train=102, test=26
+       epochs=76, train_loss=0.050850, val_loss=0.026275
+       RMSE=5.77, MAE=4.24, MAPE=16.1%
+
+[2.7] Generating forecast plots

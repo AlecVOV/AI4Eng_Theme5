@@ -1,0 +1,83 @@
+======================================================================
+V2 PIPELINE: MEDIAN AGGREGATION + MAE LOSS
+======================================================================
+
+[1] Time-series rows after merge: 5628
+    Clusters: [np.int64(0), np.int64(1)]
+
+[2] Aggregating per cluster per hour using MEDIAN
+    Cluster-level hourly records: 291
+    Cluster 0: 157 hourly records
+    Cluster 1: 134 hourly records
+
+    Median vs Mean comparison (target_latency):
+    Mean agg:   std=65.26, range=[44.6, 387.9]
+    Median agg: std=65.27, range=[41.5, 340.9]
+
+[3] Temporal split:
+    Train: 208 rows (2022-07-03 19:00:00 to 2022-07-18 00:00:00)
+    Test:  65 rows (2022-07-19 00:00:00 to 2022-07-22 02:00:00)
+
+[4] Winsorization (99th percentile capping)
+    Latency cap (99th pct of train):    287.53 ms
+    Throughput cap (99th pct of train):  107.91 Mbps
+    svr1: train=1 clipped, test=2 clipped
+    target_latency: train=3 clipped, test=2 clipped
+    latency_rolling_3h: train=2 clipped, test=0 clipped
+    latency_rolling_6h: train=0 clipped, test=1 clipped
+    target_throughput: train=3 clipped, test=1 clipped
+    throughput_lag_1h: train=1 clipped, test=0 clipped
+
+[5] ARIMA Forecasting
+
+  --- target_latency ---
+  Cluster 0: order=(0, 1, 1), RMSE=38.52, MAE=22.87, MAPE=26.1%
+  Cluster 1: order=(0, 1, 1), RMSE=70.72, MAE=59.23, MAPE=46.4%
+
+  --- target_throughput ---
+  Cluster 0: order=(1, 0, 0), RMSE=15.57, MAE=9.13, MAPE=19.2%
+  Cluster 1: order=(1, 1, 2), RMSE=5.05, MAE=3.94, MAPE=16.6%
+
+[6] LSTM Forecasting (loss=MAE)
+
+  --- target_latency ---
+  Cluster 0: features=['svr1', 'latency_lag_1h', 'latency_rolling_3h', 'latency_rolling_6h', 'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos']
+       window=6, sequences=151, train=120, test=31
+       epochs=12, train_loss=0.054117, val_loss=0.139207
+       RMSE=22.43, MAE=17.97, MAPE=20.8%
+  Cluster 1: features=['svr1', 'latency_lag_1h', 'latency_rolling_3h', 'latency_rolling_6h', 'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos']
+       window=6, sequences=128, train=102, test=26
+       epochs=13, train_loss=0.202588, val_loss=0.173183
+       RMSE=56.54, MAE=47.00, MAPE=30.8%
+
+  --- target_throughput ---
+  Cluster 0: features=['upload_bitrate_mbps', 'download_bitrate_mbps', 'throughput_lag_1h', 'throughput_rolling_3h', 'throughput_rolling_6h', 'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos']
+       window=6, sequences=151, train=120, test=31
+       epochs=12, train_loss=0.109849, val_loss=0.114178
+       RMSE=15.28, MAE=9.42, MAPE=22.1%
+  Cluster 1: features=['upload_bitrate_mbps', 'download_bitrate_mbps', 'throughput_lag_1h', 'throughput_rolling_3h', 'throughput_rolling_6h', 'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos']
+       window=6, sequences=128, train=102, test=26
+       epochs=29, train_loss=0.170217, val_loss=0.146868
+       RMSE=5.02, MAE=3.92, MAPE=16.0%
+
+[7] Generating forecast plots
+
+======================================================================
+SIDE-BY-SIDE COMPARISON: V1 (mean+MSE) vs V2 (median+MAE)
+======================================================================
+
+Target               Cl   Model   | V1 RMSE   V2 RMSE   Chg      | V1 MAE   V2 MAE   Chg      | V1 MAPE  V2 MAPE  Chg     
+--------------------------------------------------------------------------------------------------------------------------
+Latency              0    ARIMA   | 39.53     38.52     -2.5%v | 27.23    22.87    -16.0%v | 29.0     26.1     -10.1%v
+Latency              0    LSTM    | 28.48     22.43     -21.3%v | 23.90    17.97    -24.8%v | 27.6     20.8     -24.6%v
+Latency              1    ARIMA   | 71.57     70.72     -1.2%v | 61.28    59.23    -3.3%v | 39.0     46.4     +18.9%^
+Latency              1    LSTM    | 46.08     56.54     +22.7%^ | 36.41    47.00    +29.1%^ | 20.9     30.8     +47.2%^
+Throughput           0    ARIMA   | 16.12     15.57     -3.4%v | 9.15     9.13     -0.3%v | 18.8     19.2     +2.2%^
+Throughput           0    LSTM    | 14.93     15.28     +2.4%^ | 8.10     9.42     +16.2%^ | 17.2     22.1     +28.7%^
+Throughput           1    ARIMA   | 5.93      5.05      -14.8%v | 4.61     3.94     -14.4%v | 17.9     16.6     -7.0%v
+Throughput           1    LSTM    | 5.91      5.02      -15.1%v | 4.35     3.92     -9.8%v | 16.3     16.0     -1.7%v
+
+Legend: v = improved (lower), ^ = worse (higher)
+
+All V2 outputs saved to D:\COS40007-AI-for-Eng\GROUP_PRJ\verification_output\v2_median_mae/
+Done!

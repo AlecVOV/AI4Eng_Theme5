@@ -1,0 +1,33 @@
+5G Network Performance — Preprocessing Report
+==================================================
+
+DATA CLEANING
+------------------------------
+  Initial rows: 1,521,413
+  Invalid GPS rows removed: 0
+  All-null latency rows removed: 0
+  Missing square_id rows removed: 0
+  Final rows after cleaning: 1,521,413
+  Total rows removed: 0 (0.0%)
+
+CLEANED BASE DATASET
+------------------------------
+  Rows: 1,521,413
+  Columns: 25
+  Unique zones (square_id): 289
+  Date range: 2022-07-04 04:51:47 to 2022-07-22 15:24:05
+  Average latency: mean=94.28, std=90.70, min=0.00, max=462.50
+  Total throughput: mean=29.35, std=18.65, min=0.00, max=101.80
+
+CLUSTERING DATASET (zones_for_clustering.csv)
+------------------------------
+  Zones: 289
+  Columns: ['square_id', 'latitude', 'longitude', 'mean_latency', 'std_latency', 'median_latency', 'mean_throughput', 'std_throughput', 'median_throughput', 'mean_transfer', 'mean_ul_dl_ratio', 'mean_speed', 'observation_count']
+  Observations per zone: min=2, median=3321, max=78326
+
+FORECASTING DATASET (timeseries_for_forecasting.csv)
+------------------------------
+  Rows: 5,677
+  Columns: ['square_id', 'datetime_hour', 'mean_latency', 'mean_throughput', 'mean_transfer', 'mean_ul_dl_ratio', 'mean_speed', 'latitude', 'longitude', 'observation_count', 'hour_of_day', 'day_of_week', 'date']
+  Zones: 289
+  Time windows: 171

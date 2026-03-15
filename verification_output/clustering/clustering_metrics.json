@@ -1,0 +1,27 @@
+{
+  "best_k": 2,
+  "silhouette": 0.2514,
+  "davies_bouldin": 1.5076,
+  "calinski_harabasz": 91.64,
+  "cluster_names": {
+    "0": "Low Latency / High Throughput",
+    "1": "High Latency / Low Throughput"
+  },
+  "cluster_sizes": {
+    "0": 159,
+    "1": 98
+  },
+  "feature_cols": [
+    "svr1",
+    "upload_bitrate_mbps",
+    "download_bitrate_mbps",
+    "latitude",
+    "longitude"
+  ],
+  "n_zones_total": 297,
+  "n_zones_filtered": 257,
+  "dbscan_eps": 0.4,
+  "dbscan_min_samples": 3,
+  "dbscan_n_clusters": 5,
+  "dbscan_n_noise": 240
+}

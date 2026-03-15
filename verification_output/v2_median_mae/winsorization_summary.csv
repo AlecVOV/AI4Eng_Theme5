@@ -1,0 +1,12 @@
+column,cap_type,cap_value,train_clipped,test_clipped,train_max_before,train_max_after,test_max_before,test_max_after
+svr1,latency,287.53,1,2,292.0,287.53,360.08,287.53
+target_latency,latency,287.53,3,2,340.94,287.53,340.66,287.53
+latency_lag_1h,latency,287.53,0,0,275.7,275.7,274.06,274.06
+latency_rolling_3h,latency,287.53,2,0,300.25,287.53,258.04,258.04
+latency_rolling_6h,latency,287.53,0,1,245.39,245.39,291.67,287.53
+upload_bitrate_mbps,throughput,107.91,0,0,30.14,30.14,32.16,32.16
+download_bitrate_mbps,throughput,107.91,0,0,83.32,83.32,89.52,89.52
+target_throughput,throughput,107.91,3,1,113.47,107.91,114.69,107.91
+throughput_lag_1h,throughput,107.91,1,0,109.83,107.91,107.6,107.6
+throughput_rolling_3h,throughput,107.91,0,0,94.9,94.9,83.78,83.78
+throughput_rolling_6h,throughput,107.91,0,0,84.95,84.95,78.05,78.05

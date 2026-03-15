@@ -1,0 +1,3 @@
+cluster,name,size,mean_silhouette,min_silhouette,max_silhouette,pct_negative
+0,Low Latency / High Throughput,159,0.2528,-0.0144,0.4306,0.6
+1,High Latency / Low Throughput,98,0.249,0.0047,0.4395,0.0

@@ -1,0 +1,27 @@
+# Large raw data (619MB — not needed, we use data/*.csv)
+data/raw/
+
+# V1 model artifacts in outputs/ (regenerate: python scripts/task1_clustering.py && python scripts/task2_forecasting.py)
+outputs/*.keras
+outputs/*.pkl
+
+# Verification model artifacts (regenerate: python scripts/run_verification.py)
+verification_output/**/*.h5
+verification_output/**/*.keras
+verification_output/**/*.pkl
+
+# NOTE: streamlit_app/models/*.h5 is NOT ignored — the app needs them to run
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
