@@ -174,15 +174,6 @@ onMounted(() => {
         </div>
       </div>
     </section>
-
-    <!-- Course info footer -->
-    <section class="border-t border-slate-100 bg-white/60 py-10 text-center">
-      <p class="text-sm text-slate-500">
-        <strong class="text-slate-700">COS40007</strong> — Artificial Intelligence Engineering &nbsp;·&nbsp;
-        Swinburne University of Technology &nbsp;·&nbsp; 2026
-      </p>
-    </section>
-
   </div>
 </template>
 
