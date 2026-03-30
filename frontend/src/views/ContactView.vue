@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import axios from 'axios'
 
 interface FormState {
   name: string
@@ -14,26 +15,30 @@ interface Link {
   description: string
 }
 
+const API = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+
 const form = ref<FormState>({ name: '', email: '', message: '' })
 const submitted = ref(false)
+const submitting = ref(false)
+const submitError = ref('')
 const errors = ref<Partial<FormState>>({})
 
 const links: Link[] = [
   {
     label: 'GitHub Repository',
-    href: 'https://github.com',
+    href: 'https://github.com/AlecVOV/AI4Eng_Theme5',
     icon: 'github',
     description: 'Source code, issues, and pull requests',
   },
   {
-    label: 'LinkedIn — Team',
-    href: 'https://linkedin.com',
+    label: 'LinkedIn — Main Contributor',
+    href: 'https://www.linkedin.com/in/lehoangtrietthong/',
     icon: 'linkedin',
-    description: 'Connect with the team on LinkedIn',
+    description: 'Connect with the main contributor on LinkedIn',
   },
   {
     label: 'Email Us',
-    href: 'mailto:team@example.com',
+    href: 'mailto:lhtthong.forwork@outlook.com',
     icon: 'email',
     description: 'Send a direct message to the project team',
   },
@@ -52,15 +57,33 @@ function validate(): boolean {
   return Object.keys(e).length === 0
 }
 
-function handleSubmit() {
+async function handleSubmit(): Promise<void> {
   if (!validate()) return
-  // In a real deployment this would call an API endpoint.
-  submitted.value = true
+  submitting.value = true
+  submitError.value = ''
+
+  try {
+    await axios.post(`${API}/api/contact`, {
+      name: form.value.name,
+      email: form.value.email,
+      message: form.value.message,
+    })
+    submitted.value = true
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err) && err.response?.data?.detail) {
+      submitError.value = err.response.data.detail
+    } else {
+      submitError.value = 'Failed to send message. Please try again later.'
+    }
+  } finally {
+    submitting.value = false
+  }
 }
 
 function resetForm() {
   form.value = { name: '', email: '', message: '' }
   errors.value = {}
+  submitError.value = ''
   submitted.value = false
 }
 </script>
@@ -159,11 +182,21 @@ function resetForm() {
             <p v-if="errors.message" class="mt-1 text-xs text-red-600" role="alert">{{ errors.message }}</p>
           </div>
 
+          <!-- Submit error -->
+          <div
+            v-if="submitError"
+            class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            role="alert"
+          >
+            {{ submitError }}
+          </div>
+
           <button
             type="submit"
-            class="w-full rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
+            :disabled="submitting"
+            class="w-full rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Send Message
+            {{ submitting ? 'Sending…' : 'Send Message' }}
           </button>
         </form>
       </section>

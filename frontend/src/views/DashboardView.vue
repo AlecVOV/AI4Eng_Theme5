@@ -1,13 +1,17 @@
 <script setup lang="ts">
+import axios from 'axios'
 import * as echarts from 'echarts'
 import L from 'leaflet'
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { mockForecastData, mockMapData } from '../services/mockData'
 import type { ClusterPoint, ForecastPoint } from '../services/mockData'
+
+const API = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 const mapContainerRef = ref<HTMLDivElement | null>(null)
 const chartContainerRef = ref<HTMLDivElement | null>(null)
 const loading = ref(true)
+const isMapLoading = ref(false)
+const isChartLoading = ref(false)
 const errorMessage = ref('')
 
 let map: L.Map | null = null
@@ -21,26 +25,43 @@ const clusterConfig: Record<number, { label: string; color: string; sublabel: st
 
 const qualityLegend = Object.values(clusterConfig)
 
-function simulateDelay(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 1500))
-}
-
 async function loadDashboardData(): Promise<void> {
   loading.value = true
+  isMapLoading.value = true
+  isChartLoading.value = true
   errorMessage.value = ''
 
   try {
-    await simulateDelay()
+    const [mapRes, forecastRes] = await Promise.all([
+      axios.get<ClusterPoint[]>(`${API}/api/map-data`),
+      axios.get<ForecastPoint[]>(`${API}/api/forecast-data`),
+    ])
+
     loading.value = false
     await nextTick()
-    renderMap(mockMapData)
-    renderChart(mockForecastData)
+
+    isMapLoading.value = false
+    renderMap(mapRes.data)
+
+    isChartLoading.value = false
+    renderChart(forecastRes.data)
   } catch (error) {
     loading.value = false
-    errorMessage.value =
-      error instanceof Error
-        ? `Không thể tải dữ liệu dashboard: ${error.message}`
-        : 'Không thể tải dữ liệu dashboard.'
+    isMapLoading.value = false
+    isChartLoading.value = false
+
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+      const detail = error.response?.data?.detail
+      errorMessage.value = detail
+        ? `API error (${status}): ${detail}`
+        : `Cannot reach API at ${API} — is the backend running?`
+    } else {
+      errorMessage.value =
+        error instanceof Error
+          ? `Không thể tải dữ liệu dashboard: ${error.message}`
+          : 'Không thể tải dữ liệu dashboard.'
+    }
   }
 }
 

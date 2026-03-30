@@ -8,21 +8,20 @@ interface FlowStep {
 }
 
 const trainingSteps: FlowStep[] = [
-  { id: 1, title: 'New 5G CSV Data',           description: 'A new [Date]-truck-combined-kml.csv is uploaded to S3 Raw Data.' },
-  { id: 2, title: 'S3 Event Notification',      description: 'S3 Raw Data detects the new object and sends an event notification.' },
-  { id: 3, title: 'AWS Lambda Trigger',         description: 'The S3 Event triggers an AWS Lambda function to start the MLOps pipeline.' },
-  { id: 4, title: 'SageMaker Processing',       description: 'A temporary containerized job runs. It reads the raw CSV, removes 99999 coordinates / 1000 timeouts, and extracts features.' },
-  { id: 5, title: 'Merge with Feature Store',   description: 'The cleaned data is merged into the historical dataset stored in S3.' },
-  { id: 6, title: 'SageMaker Training & Eval',  description: 'Trains new clustering (Map) and time-series (Forecast) models using a rolling window of recent data. Evaluates the new Challenger vs current Champion.' },
-  { id: 7, title: 'Model Registry (Artifacts)', description: 'If the Challenger is better, the approved .pkl artifacts are versioned and stored securely in S3.' },
+  { id: 1, title: 'Developer Upload',             description: 'Authenticated admin uploads new 5G CSV to S3 Raw Data.' },
+  { id: 2, title: 'Single Lambda Trigger',         description: 'S3 event triggers one Lambda function to wake up the ML orchestrator.' },
+  { id: 3, title: 'SageMaker Pipeline: Process',   description: 'Cleans invalid coordinates / timeouts and merges with the historical Feature Store (S3).' },
+  { id: 4, title: 'SageMaker Pipeline: Train',     description: 'Trains new K-Means and Time-Series models using a rolling window of recent data.' },
+  { id: 5, title: 'Model Evaluation',              description: 'Compares Challenger vs. Champion model accuracy.' },
+  { id: 6, title: 'Model Registry',                description: 'Approved .pkl artifacts are versioned and stored securely in S3 Artifacts.' },
 ]
 
 const inferenceSteps: FlowStep[] = [
-  { id: 1, title: 'Dashboard Access',         description: 'A user accesses the 5G Network Quality Dashboard in their browser.' },
-  { id: 2, title: 'CloudFront CDN',           description: 'Securely serves the static Vue 3 application assets (HTML / CSS / JS) to the client.' },
-  { id: 3, title: 'App Runner FastAPI',        description: 'The Vue frontend makes an API call to /api/map-data. The FastAPI backend receives the request.' },
-  { id: 4, title: 'S3 Artifacts (Load Model)','description': 'The FastAPI backend downloads the latest approved .pkl model artifacts from S3 into its local memory.' },
-  { id: 5, title: 'Live Predictions',          description: 'The backend runs inference using the model, returning live GeoJSON / forecast data to the Vue chart and map.' },
+  { id: 1, title: 'Dashboard Access',              description: 'User accesses the 5G Dashboard via CloudFront CDN.' },
+  { id: 2, title: 'Supabase Auth (Admin Only)',     description: 'If accessing backend tools, Supabase verifies identity and issues JWT.' },
+  { id: 3, title: '[API Gateway & Lambda]',             description: 'Vue app calls /api. API Gateway triggers Lambda (Mangum wrapper), which runs FastAPI to verify tokens and handle the request.' },
+  { id: 4, title: 'S3 Artifacts',                   description: 'FastAPI pulls the latest approved machine learning models into memory.' },
+  { id: 5, title: 'Live Predictions',               description: 'Backend runs inference, returning GeoJSON and forecast arrays to the UI.' },
 ]
 
 const isTrainingSimulating = ref(false)
@@ -77,7 +76,7 @@ function simulateInference(): void {
         <div class="mb-6 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <span class="inline-block rounded-full bg-violet-100 px-3 py-0.5 text-xs font-bold uppercase tracking-widest text-violet-700">MLOps</span>
-            <h3 class="mt-2 text-base font-bold text-slate-800">Continuous Training Flow</h3>
+            <h3 class="mt-2 text-base font-bold text-slate-800">Continuous Training Flow (MLOps)</h3>
           </div>
           <button
             class="shrink-0 rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500"
@@ -94,7 +93,7 @@ function simulateInference(): void {
               <svg v-else class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
               </svg>
-              Simulate Model Training
+              Simulate MLOps Pipeline
             </span>
           </button>
         </div>
@@ -160,7 +159,7 @@ function simulateInference(): void {
         <div class="mb-6 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <span class="inline-block rounded-full bg-sky-100 px-3 py-0.5 text-xs font-bold uppercase tracking-widest text-sky-700">Live</span>
-            <h3 class="mt-2 text-base font-bold text-slate-800">User Inference Flow</h3>
+            <h3 class="mt-2 text-base font-bold text-slate-800">User Inference Flow (Live Dashboard)</h3>
           </div>
           <button
             class="shrink-0 rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"

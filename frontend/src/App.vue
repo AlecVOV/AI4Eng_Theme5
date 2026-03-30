@@ -10,6 +10,7 @@ const navLinks = [
   { to: '/about',        label: 'About Us'     },
   { to: '/architecture', label: 'Architecture' },
   { to: '/contact',      label: 'Contact'      },
+  { to: '/admin',        label: 'Admin Panel'  },
 ]
 
 const route = useRoute()

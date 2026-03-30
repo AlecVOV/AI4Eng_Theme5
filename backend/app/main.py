@@ -1,138 +1,110 @@
+import os
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+
 import pandas as pd
-from fastapi import FastAPI
+import resend
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
 METRICS_DIR = BASE_DIR / "metrics"
 
+MAP_CSV = DATA_DIR / "map_data.csv"
+FORECAST_CSV = METRICS_DIR / "forecast_data.csv"
+
 app = FastAPI(title="5G Network Quality API", version="1.0.0")
 
-# Allow broad CORS access for local dashboard development.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:8080",
+        "http://localhost:4173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-MAP_COLUMNS = ["square_id", "latitude", "longitude", "quality"]
-FORECAST_COLUMNS = ["timestamp", "predicted_speed_mbps"]
-QUALITY_TO_LABEL = {
-    "good": "Tot",
-    "medium": "Trung binh",
-    "poor": "Yeu",
-    "tot": "Tot",
-    "trung binh": "Trung binh",
-    "yeu": "Yeu",
-}
+resend.api_key = os.environ.get("RESEND_API_KEY", "")
+CONTACT_TO_EMAIL = os.environ.get("CONTACT_TO_EMAIL", "lhtthong.forwork@outlook.com")
 
 
-def _first_csv(directory: Path) -> Path | None:
-    files = sorted(directory.glob("*.csv"))
-    return files[0] if files else None
+class ContactRequest(BaseModel):
+    name: str
+    email: EmailStr
+    message: str
 
 
-def _fallback_map_data() -> pd.DataFrame:
-    return pd.DataFrame(
-        [
-            {"square_id": "SQ-001", "latitude": 13.7563, "longitude": 100.5018, "quality": "Tot"},
-            {"square_id": "SQ-002", "latitude": 13.7462, "longitude": 100.5347, "quality": "Trung binh"},
-            {"square_id": "SQ-003", "latitude": 13.7367, "longitude": 100.5231, "quality": "Yeu"},
-            {"square_id": "SQ-004", "latitude": 13.7645, "longitude": 100.5152, "quality": "Tot"},
-            {"square_id": "SQ-005", "latitude": 13.7519, "longitude": 100.5414, "quality": "Trung binh"},
-        ]
-    )
+# ── Map data ────────────────────────────────────────────────────
+
+def _read_map_data() -> list[dict[str, Any]]:
+    """Read map_data.csv and return list of {lat, lng, cluster} dicts."""
+    if not MAP_CSV.is_file():
+        raise HTTPException(status_code=404, detail=f"{MAP_CSV.name} not found.")
+
+    try:
+        df = pd.read_csv(MAP_CSV)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to read {MAP_CSV.name}: {exc}")
+
+    required = {"lat", "lng", "cluster"}
+    if not required.issubset(df.columns):
+        raise HTTPException(
+            status_code=500,
+            detail=f"{MAP_CSV.name} missing columns: {required - set(df.columns)}",
+        )
+
+    df = df[["lat", "lng", "cluster"]].dropna()
+    df["lat"] = pd.to_numeric(df["lat"], errors="coerce")
+    df["lng"] = pd.to_numeric(df["lng"], errors="coerce")
+    df["cluster"] = pd.to_numeric(df["cluster"], errors="coerce").astype(int)
+    df = df.dropna()
+
+    return df.to_dict(orient="records")
 
 
-def _fallback_forecast_data() -> pd.DataFrame:
-    timestamps = pd.date_range("2026-03-13 08:00:00", periods=12, freq="h")
-    predicted = [
-        142.0,
-        146.5,
-        151.2,
-        149.8,
-        153.4,
-        158.1,
-        161.6,
-        159.2,
-        164.4,
-        168.7,
-        166.9,
-        170.2,
-    ]
-    return pd.DataFrame({"timestamp": timestamps, "predicted_speed_mbps": predicted})
+# ── Forecast data ───────────────────────────────────────────────
+
+def _read_forecast_data() -> list[dict[str, Any]]:
+    """Read forecast_data.csv and return list of {timestamp, predicted_throughput, predicted_latency} dicts."""
+    if not FORECAST_CSV.is_file():
+        raise HTTPException(status_code=404, detail=f"{FORECAST_CSV.name} not found.")
+
+    try:
+        df = pd.read_csv(FORECAST_CSV)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to read {FORECAST_CSV.name}: {exc}")
+
+    required = {"timestamp", "predicted_throughput", "predicted_latency"}
+    if not required.issubset(df.columns):
+        raise HTTPException(
+            status_code=500,
+            detail=f"{FORECAST_CSV.name} missing columns: {required - set(df.columns)}",
+        )
+
+    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+    df["predicted_throughput"] = pd.to_numeric(df["predicted_throughput"], errors="coerce")
+    df["predicted_latency"] = pd.to_numeric(df["predicted_latency"], errors="coerce")
+    df = df.dropna(subset=["timestamp", "predicted_throughput", "predicted_latency"])
+    df = df.sort_values("timestamp")
+
+    df["timestamp"] = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M")
+    df["predicted_throughput"] = df["predicted_throughput"].round(2)
+    df["predicted_latency"] = df["predicted_latency"].round(2)
+
+    return df[["timestamp", "predicted_throughput", "predicted_latency"]].to_dict(orient="records")
 
 
-def _read_map_dataframe() -> pd.DataFrame:
-    csv_path = _first_csv(DATA_DIR)
-    if csv_path is None:
-        return _fallback_map_data()
-
-    df = pd.read_csv(csv_path)
-    missing = [col for col in ["square_id", "latitude", "longitude"] if col not in df.columns]
-    if missing:
-        return _fallback_map_data()
-
-    if "quality" not in df.columns:
-        if "cluster_label" in df.columns:
-            df["quality"] = df["cluster_label"]
-        elif "network_quality" in df.columns:
-            df["quality"] = df["network_quality"]
-        else:
-            df["quality"] = "Trung binh"
-
-    out = df[MAP_COLUMNS].copy()
-    out["quality"] = (
-        out["quality"]
-        .astype(str)
-        .str.strip()
-        .str.lower()
-        .map(QUALITY_TO_LABEL)
-        .fillna("Trung binh")
-    )
-
-    return out.dropna(subset=["latitude", "longitude"]).reset_index(drop=True)
-
-
-def _read_forecast_dataframe() -> pd.DataFrame:
-    csv_path = _first_csv(METRICS_DIR)
-    if csv_path is None:
-        return _fallback_forecast_data()
-
-    df = pd.read_csv(csv_path)
-
-    timestamp_col = None
-    for candidate in ["timestamp", "time", "datetime", "date"]:
-        if candidate in df.columns:
-            timestamp_col = candidate
-            break
-
-    value_col = None
-    for candidate in ["predicted_speed_mbps", "forecast_speed", "prediction", "y_pred", "speed_mbps"]:
-        if candidate in df.columns:
-            value_col = candidate
-            break
-
-    if timestamp_col is None or value_col is None:
-        return _fallback_forecast_data()
-
-    out = df[[timestamp_col, value_col]].copy()
-    out.columns = FORECAST_COLUMNS
-    out["timestamp"] = pd.to_datetime(out["timestamp"], errors="coerce")
-    out["predicted_speed_mbps"] = pd.to_numeric(out["predicted_speed_mbps"], errors="coerce")
-    out = out.dropna(subset=FORECAST_COLUMNS).sort_values("timestamp")
-
-    if out.empty:
-        return _fallback_forecast_data()
-
-    return out.reset_index(drop=True)
-
+# ── Routes ──────────────────────────────────────────────────────
 
 @app.get("/")
 def read_root() -> dict[str, str]:
@@ -140,35 +112,45 @@ def read_root() -> dict[str, str]:
 
 
 @app.get("/api/map-data")
-def get_map_data() -> dict[str, Any]:
-    df = _read_map_dataframe()
-
-    features = []
-    for _, row in df.iterrows():
-        features.append(
-            {
-                "type": "Feature",
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [float(row["longitude"]), float(row["latitude"])],
-                },
-                "properties": {
-                    "square_id": str(row["square_id"]),
-                    "quality": str(row["quality"]),
-                },
-            }
-        )
-
-    return {
-        "type": "FeatureCollection",
-        "features": features,
-    }
+def get_map_data() -> list[dict[str, Any]]:
+    return _read_map_data()
 
 
 @app.get("/api/forecast-data")
-def get_forecast_data() -> dict[str, list[Any]]:
-    df = _read_forecast_dataframe()
-    return {
-        "time": df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S").tolist(),
-        "predicted_speed_mbps": df["predicted_speed_mbps"].round(3).tolist(),
+def get_forecast_data() -> list[dict[str, Any]]:
+    return _read_forecast_data()
+
+
+@app.post("/api/contact")
+def send_contact_email(body: ContactRequest) -> dict[str, str]:
+    if not resend.api_key:
+        raise HTTPException(status_code=500, detail="Email service is not configured.")
+
+    params: resend.Emails.SendParams = {
+        "from": "5G Dashboard <onboarding@resend.dev>",
+        "to": [CONTACT_TO_EMAIL],
+        "reply_to": body.email,
+        "subject": f"[5G Dashboard] Feedback from {body.name}",
+        "html": (
+            f"<h2>New feedback from {body.name}</h2>"
+            f"<p><strong>Email:</strong> {body.email}</p>"
+            f"<p><strong>Message:</strong></p>"
+            f"<p>{body.message}</p>"
+        ),
     }
+
+    try:
+        email = resend.Emails.send(params)
+    except resend.exceptions.ResendError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    if not email or "id" not in email:
+        raise HTTPException(status_code=502, detail="Failed to send email.")
+
+    return {"status": "sent"}
+
+
+# ── AWS Lambda entry point (Mangum) ─────────────────────────────
+from mangum import Mangum
+
+handler = Mangum(app)

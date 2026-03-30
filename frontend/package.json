@@ -19,6 +19,7 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.100.1",
     "axios": "^1.13.2",
     "echarts": "^6.0.0",
     "leaflet": "^1.9.4",

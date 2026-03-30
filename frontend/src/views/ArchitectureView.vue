@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import MLOpsPipeline from '../components/MLOpsPipeline.vue'
 import AWSArchitectureMap from '../components/AWSArchitectureMap.vue'
+import architectureImage from '../assets/AWSArchitecture.png'
+
 
 interface Phase {
   number: string
@@ -160,8 +162,9 @@ const layers: Layer[] = [
       <!-- Complete System Architecture — Static Diagram -->
       <section class="mb-14">
         <h2 class="mb-4 text-xl font-semibold text-slate-800">Complete System Architecture</h2>
-        <div class="w-full h-96 bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center rounded-xl text-gray-500">
-          Insert draw.io SVG here
+
+        <div class="w-full h-auto bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center rounded-xl">
+          <img :src="architectureImage" alt="Architecture Image" class="max-h-full max-w-full object-contain" />
         </div>
       </section>
 
