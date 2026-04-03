@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
+import boto3
 import pandas as pd
 import resend
 from fastapi import FastAPI, HTTPException
@@ -27,6 +28,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:8080",
         "http://localhost:4173",
+        "https://d33m3uevv39v9p.cloudfront.net",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -36,6 +38,12 @@ app.add_middleware(
 
 resend.api_key = os.environ.get("RESEND_API_KEY", "")
 CONTACT_TO_EMAIL = os.environ.get("CONTACT_TO_EMAIL", "lhtthong.forwork@outlook.com")
+
+S3_RAW_BUCKET = "5g-dashboard-raw-data"
+S3_CLEANED_BUCKET = "5g-dashboard-cleaned-data"
+S3_ARTIFACTS_BUCKET = os.environ.get("S3_ARTIFACTS_BUCKET", "5g-dashboard-artifacts")
+
+s3_client = boto3.client("s3")
 
 
 class ContactRequest(BaseModel):
@@ -148,6 +156,58 @@ def send_contact_email(body: ContactRequest) -> dict[str, str]:
         raise HTTPException(status_code=502, detail="Failed to send email.")
 
     return {"status": "sent"}
+
+
+# ── Admin: S3 data listing ──────────────────────────────────────
+
+def _list_s3_objects(bucket: str, prefix: str = "") -> list[dict[str, Any]]:
+    """List objects in an S3 bucket and return name, size, date."""
+    try:
+        response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to list S3 bucket {bucket}: {exc}")
+
+    contents = response.get("Contents", [])
+    results: list[dict[str, Any]] = []
+    for obj in contents:
+        key = obj["Key"]
+        if key.endswith("/"):
+            continue
+        size_bytes = obj["Size"]
+        if size_bytes >= 1_048_576:
+            size_str = f"{size_bytes / 1_048_576:.1f} MB"
+        elif size_bytes >= 1024:
+            size_str = f"{size_bytes / 1024:.1f} KB"
+        else:
+            size_str = f"{size_bytes} B"
+
+        results.append({
+            "name": key.split("/")[-1],
+            "size": size_str,
+            "date": obj["LastModified"].strftime("%Y-%m-%d"),
+        })
+
+    return results
+
+
+@app.get("/api/cleaned-data")
+def get_cleaned_data() -> list[dict[str, Any]]:
+    return _list_s3_objects(S3_CLEANED_BUCKET)
+
+
+@app.get("/api/models")
+def get_model_artifacts() -> list[dict[str, Any]]:
+    objects = _list_s3_objects(S3_ARTIFACTS_BUCKET, prefix="models/")
+    results: list[dict[str, Any]] = []
+    for obj in objects:
+        name = obj["name"]
+        results.append({
+            "version": name,
+            "file": name,
+            "date": obj["date"],
+            "accuracy": "—",
+        })
+    return results
 
 
 # ── AWS Lambda entry point (Mangum) ─────────────────────────────

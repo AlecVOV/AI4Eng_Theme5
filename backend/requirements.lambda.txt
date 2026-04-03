@@ -1,0 +1,7 @@
+fastapi
+mangum==0.17.0
+pandas
+pydantic
+email-validator
+python-dotenv
+resend

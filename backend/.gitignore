@@ -3,3 +3,5 @@
 .env
 data/cleaned_5g_scaled.csv
 data/cleaned_5g_data.csv
+notebooks/data/cleaned_5g_data.csv
+notebooks/data/cleaned_5g_scaled.csv

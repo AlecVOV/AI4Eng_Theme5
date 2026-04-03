@@ -1,0 +1,6 @@
+{
+  "Name": "5g-dashboard-oac",
+  "OriginAccessControlOriginType": "s3",
+  "SigningBehavior": "always",
+  "SigningProtocol": "sigv4"
+}

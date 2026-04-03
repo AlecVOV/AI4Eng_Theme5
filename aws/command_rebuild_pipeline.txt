@@ -1,0 +1,16 @@
+# 1. Rebuild & push backend
+cd backend
+docker build -f Dockerfile.lambda -t 5g-dashboard-backend --provenance=false .
+docker tag 5g-dashboard-backend:latest 677276113002.dkr.ecr.us-east-1.amazonaws.com/5g-dashboard-backend:latest
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 677276113002.dkr.ecr.us-east-1.amazonaws.com
+docker push 677276113002.dkr.ecr.us-east-1.amazonaws.com/5g-dashboard-backend:latest
+aws lambda update-function-code --function-name 5g-dashboard-api --image-uri 677276113002.dkr.ecr.us-east-1.amazonaws.com/5g-dashboard-backend:latest
+
+# 2. Rebuild & push frontend
+cd ../frontend
+$env:VITE_API_BASE_URL="https://lhrvjvhw3g.execute-api.us-east-1.amazonaws.com"
+npm run build
+aws s3 sync dist/ s3://5g-dashboard-frontend/ --delete
+
+# 3. Invalidate CloudFront cache
+aws cloudfront create-invalidation --distribution-id E30LMRNQDG6P0F --paths "/*"

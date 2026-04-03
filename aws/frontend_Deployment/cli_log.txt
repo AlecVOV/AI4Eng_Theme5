@@ -1,0 +1,496 @@
+cd frontend
+
+# Set the API base URL to the API Gateway endpoint
+$env:VITE_API_BASE_URL="https://lhrvjvhw3g.execute-api.us-east-1.amazonaws.com"
+
+# Build production bundle
+npm run build
+
+#Create bucket:
+$AWS_REGION = "us-east-1"
+
+aws s3api create-bucket `
+  --bucket 5g-dashboard-frontend `
+  --region $AWS_REGION
+
+{
+    "Location": "/5g-dashboard-frontend",
+    "BucketArn": "arn:aws:s3:::5g-dashboard-frontend"
+}
+
+
+# Block all public access (CloudFront will use OAC)
+aws s3api put-public-access-block `
+  --bucket 5g-dashboard-frontend `
+  --public-access-block-configuration `
+    BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+
+Upload the Build:
+aws s3 sync frontend/dist/ s3://5g-dashboard-frontend/ --delete
+
+PS D:\Study\Bachelor SUT\Year 4 - Final Unit\Spring 2026\COS40007 - Artificial Intelligence Engineering\Final Project\AI4Eng_Theme5\frontend> aws s3 sync dist/ s3://5g-dashboard-frontend/ --delete
+upload: dist\assets\AWSArchitecture-B25BVSgY.png to s3://5g-dashboard-frontend/assets/AWSArchitecture-B25BVSgY.png
+upload: dist\assets\AdminView-BH-z-V_j.js to s3://5g-dashboard-frontend/assets/AdminView-BH-z-V_j.js
+upload: dist\assets\AboutView-CwBzCifl.css to s3://5g-dashboard-frontend/assets/AboutView-CwBzCifl.css
+upload: dist\assets\AboutView-CvJY5NWj.js to s3://5g-dashboard-frontend/assets/AboutView-CvJY5NWj.js
+upload: dist\assets\LoginView-B2x1dZDu.js to s3://5g-dashboard-frontend/assets/LoginView-B2x1dZDu.js
+upload: dist\favicon.svg to s3://5g-dashboard-frontend/favicon.svg
+upload: dist\assets\ContactView-CmMHfGyK.js to s3://5g-dashboard-frontend/assets/ContactView-CmMHfGyK.js
+upload: dist\assets\NotFoundView-BY4kd8Yi.js to s3://5g-dashboard-frontend/assets/NotFoundView-BY4kd8Yi.js
+upload: dist\index.html to s3://5g-dashboard-frontend/index.html
+upload: dist\favicon.ico to s3://5g-dashboard-frontend/favicon.ico
+upload: dist\assets\ArchitectureView-BYkIN9WM.js to s3://5g-dashboard-frontend/assets/ArchitectureView-BYkIN9WM.js
+upload: dist\assets\index-DX2FPVMo.css to s3://5g-dashboard-frontend/assets/index-DX2FPVMo.css
+upload: dist\assets\index-BshRPx7p.js to s3://5g-dashboard-frontend/assets/index-BshRPx7p.js
+
+
+# Step 1: Create Origin Access Control
+Create a oac.json file:
+
+$OAC_ID = (aws cloudfront create-origin-access-control `
+  --origin-access-control-config file://oac.json `
+  --query "OriginAccessControl.Id" `
+  --output text)
+
+Write-Host "OAC ID: $OAC_ID"
+OAC ID: E3BO4R4ZKDI53
+
+PS D:\Study\Bachelor SUT\Year 4 - Final Unit\Spring 2026\COS40007 - Artificial Intelligence Engineering\Final Project\AI4Eng_Theme5\aws\frontend_Deployment> $OAC_ID = (aws cloudfront create-origin-access-control `
+>>   --origin-access-control-config file://oac.json `
+>>   --query "OriginAccessControl.Id" `
+>>   --output text)
+PS D:\Study\Bachelor SUT\Year 4 - Final Unit\Spring 2026\COS40007 - Artificial Intelligence Engineering\Final Project\AI4Eng_Theme5\aws\frontend_Deployment>
+PS D:\Study\Bachelor SUT\Year 4 - Final Unit\Spring 2026\COS40007 - Artificial Intelligence Engineering\Final Project\AI4Eng_Theme5\aws\frontend_Deployment> Write-Host "OAC ID: $OAC_ID"
+
+Create a cloudfront-config.json:
+aws cloudfront create-distribution `
+  --distribution-config file://cloudfront-config.json
+
+PS D:\Study\Bachelor SUT\Year 4 - Final Unit\Spring 2026\COS40007 - Artificial Intelligence Engineering\Final Project\AI4Eng_Theme5\aws\frontend_Deployment> aws cloudfront create-distribution `
+>>   --distribution-config file://cloudfront-config.json
+{
+    "Location": "https://cloudfront.amazonaws.com/2020-05-31/distribution/E30LMRNQDG6P0F",
+    "ETag": "E23ZP02F085DFQ",
+    "Distribution": {
+        "Id": "E30LMRNQDG6P0F",
+        "ARN": "arn:aws:cloudfront::677276113002:distribution/E30LMRNQDG6P0F",
+        "Status": "InProgress",
+        "LastModifiedTime": "2026-04-03T04:33:27.163000+00:00",
+        "InProgressInvalidationBatches": 0,
+        "DomainName": "d33m3uevv39v9p.cloudfront.net",
+        "ActiveTrustedSigners": {
+            "Enabled": false,
+            "Quantity": 0
+        },
+        "ActiveTrustedKeyGroups": {
+            "Enabled": false,
+            "Quantity": 0
+        },
+        "DistributionConfig": {
+            "CallerReference": "5g-dashboard-2026",
+            "Aliases": {
+                "Quantity": 0
+            },
+            "DefaultRootObject": "index.html",
+            "Origins": {
+                "Quantity": 2,
+                "Items": [
+                    {
+                        "Id": "S3-frontend",
+                        "DomainName": "5g-dashboard-frontend.s3.us-east-1.amazonaws.com",
+                        "OriginPath": "",
+                        "CustomHeaders": {
+                            "Quantity": 0
+                        },
+                        "S3OriginConfig": {
+                            "OriginAccessIdentity": "",
+                            "OriginReadTimeout": 30
+                        },
+                        "ConnectionAttempts": 3,
+                        "ConnectionTimeout": 10,
+                        "OriginShield": {
+                            "Enabled": false
+                        },
+                        "OriginAccessControlId": "E3BO4R4ZKDI53"
+                    },
+                    {
+                        "Id": "APIGateway-backend",
+                        "DomainName": "lhrvjvhw3g.execute-api.us-east-1.amazonaws.com",
+                        "OriginPath": "",
+                        "CustomHeaders": {
+                            "Quantity": 0
+                        },
+                        "CustomOriginConfig": {
+                            "HTTPPort": 80,
+                            "HTTPSPort": 443,
+                            "OriginProtocolPolicy": "https-only",
+                            "OriginSslProtocols": {
+                                "Quantity": 3,
+                                "Items": [
+                                    "TLSv1",
+                                    "TLSv1.1",
+                                    "TLSv1.2"
+                                ]
+                            },
+                            "OriginReadTimeout": 30,
+                            "OriginKeepaliveTimeout": 5
+                        },
+                        "ConnectionAttempts": 3,
+                        "ConnectionTimeout": 10,
+                        "OriginShield": {
+                            "Enabled": false
+                        },
+                        "OriginAccessControlId": ""
+                    }
+                ]
+            },
+            "OriginGroups": {
+                "Quantity": 0
+            },
+            "DefaultCacheBehavior": {
+                "TargetOriginId": "S3-frontend",
+                "TrustedSigners": {
+                    "Enabled": false,
+                    "Quantity": 0
+                },
+                "TrustedKeyGroups": {
+                    "Enabled": false,
+                    "Quantity": 0
+                },
+                "ViewerProtocolPolicy": "redirect-to-https",
+                "AllowedMethods": {
+                    "Quantity": 2,
+                    "Items": [
+                        "HEAD",
+                        "GET"
+                    ],
+                    "CachedMethods": {
+                        "Quantity": 2,
+                        "Items": [
+                            "HEAD",
+                            "GET"
+                        ]
+                    }
+                },
+                "SmoothStreaming": false,
+                "Compress": false,
+                "LambdaFunctionAssociations": {
+                    "Quantity": 0
+                },
+                "FunctionAssociations": {
+                    "Quantity": 0
+                },
+                "FieldLevelEncryptionId": "",
+                "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+                "GrpcConfig": {
+                    "Enabled": false
+                }
+            },
+            "CacheBehaviors": {
+                "Quantity": 1,
+                "Items": [
+                    {
+                        "PathPattern": "/api/*",
+                        "TargetOriginId": "APIGateway-backend",
+                        "TrustedSigners": {
+                            "Enabled": false,
+                            "Quantity": 0
+                        },
+                        "TrustedKeyGroups": {
+                            "Enabled": false,
+                            "Quantity": 0
+                        },
+                        "ViewerProtocolPolicy": "redirect-to-https",
+                        "AllowedMethods": {
+                            "Quantity": 7,
+                            "Items": [
+                                "HEAD",
+                                "DELETE",
+                                "POST",
+                                "GET",
+                                "OPTIONS",
+                                "PUT",
+                                "PATCH"
+                            ],
+                            "CachedMethods": {
+                                "Quantity": 2,
+                                "Items": [
+                                    "HEAD",
+                                    "GET"
+                                ]
+                            }
+                        },
+                        "SmoothStreaming": false,
+                        "Compress": false,
+                        "LambdaFunctionAssociations": {
+                            "Quantity": 0
+                        },
+                        "FunctionAssociations": {
+                            "Quantity": 0
+                        },
+                        "FieldLevelEncryptionId": "",
+                        "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+                        "OriginRequestPolicyId": "b689b0a8-53d0-40ab-baf2-68738e2966ac",
+                        "GrpcConfig": {
+                            "Enabled": false
+                        }
+                    }
+                ]
+            },
+            "CustomErrorResponses": {
+                "Quantity": 1,
+                "Items": [
+                    {
+                        "ErrorCode": 404,
+                        "ResponsePagePath": "/index.html",
+                        "ResponseCode": "200",
+                        "ErrorCachingMinTTL": 0
+                    }
+                ]
+            },
+            "Comment": "5G Network Quality Dashboard",
+            "Logging": {
+                "Enabled": false,
+                "IncludeCookies": false,
+                "Bucket": "",
+                "Prefix": ""
+            },
+            "PriceClass": "PriceClass_All",
+            "Enabled": true,
+            "ViewerCertificate": {
+                "CloudFrontDefaultCertificate": true,
+                "SSLSupportMethod": "vip",
+                "MinimumProtocolVersion": "TLSv1",
+                "CertificateSource": "cloudfront"
+            },
+            "Restrictions": {
+                "GeoRestriction": {
+                    "RestrictionType": "none",
+                    "Quantity": 0
+                }
+            },
+            "WebACLId": "",
+            "HttpVersion": "http2",
+            "IsIPV6Enabled": true,
+            "ContinuousDeploymentPolicyId": "",
+            "Staging": false
+        }
+    }
+}
+
+
+Create a bucket_policy.json:
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowCloudFrontOAC",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "cloudfront.amazonaws.com"
+      },
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::5g-dashboard-frontend/*",
+      "Condition": {
+        "StringEquals": {
+          "AWS:SourceArn": "arn:aws:cloudfront::677276113002:distribution/E30LMRNQDG6P0F"
+        }
+      }
+    }
+  ]
+}
+
+Run Command:
+aws s3api put-bucket-policy `
+  --bucket 5g-dashboard-frontend `
+  --policy file://bucket_policy.json
+
+
+# Update API Gateway CORS
+# Create cors-locked.json file:
+{
+  "AllowOrigins": ["https://d33m3uevv39v9p.cloudfront.net"],
+  "AllowMethods": ["GET", "POST", "OPTIONS"],
+  "AllowHeaders": ["Content-Type", "Authorization"],
+  "MaxAge": 3600
+}
+CloudFront Distribution: d33m3uevv39v9p.cloudfront.net
+Run command: 
+aws apigatewayv2 update-api `
+  --api-id lhrvjvhw3g `
+  --cors-configuration file://cors-locked.json
+
+PS D:\Study\Bachelor SUT\Year 4 - Final Unit\Spring 2026\COS40007 - Artificial Intelligence Engineering\Final Project\AI4Eng_Theme5\aws\frontend_Deployment> aws apigatewayv2 update-api `
+>>   --api-id lhrvjvhw3g `
+>>   --cors-configuration file://cors-locked.json
+{
+    "ApiEndpoint": "https://lhrvjvhw3g.execute-api.us-east-1.amazonaws.com",
+    "ApiId": "lhrvjvhw3g",
+    "ApiKeySelectionExpression": "$request.header.x-api-key",
+    "CorsConfiguration": {
+        "AllowHeaders": [
+            "content-type",
+            "authorization"
+        ],
+        "AllowMethods": [
+            "GET",
+            "POST",
+            "OPTIONS"
+        ],
+        "AllowOrigins": [
+            "https://d33m3uevv39v9p.cloudfront.net"
+        ],
+        "MaxAge": 3600
+    },
+    "CreatedDate": "2026-04-02T18:40:55+00:00",
+    "DisableExecuteApiEndpoint": false,
+    "IpAddressType": "ipv4",
+    "Name": "5g-dashboard-api-gw",
+    "ProtocolType": "HTTP",
+    "RouteSelectionExpression": "$request.method $request.path",
+    "Tags": {}
+}
+
+cd backend
+
+docker build -f Dockerfile.lambda -t 5g-dashboard-backend --provenance=false .
+
+docker tag 5g-dashboard-backend:latest 677276113002.dkr.ecr.us-east-1.amazonaws.com/5g-dashboard-backend:latest
+
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 677276113002.dkr.ecr.us-east-1.amazonaws.com
+
+docker push 677276113002.dkr.ecr.us-east-1.amazonaws.com/5g-dashboard-backend:latest
+
+aws lambda update-function-code --function-name 5g-dashboard-api --image-uri 677276113002.dkr.ecr.us-east-1.amazonaws.com/5g-dashboard-backend:latest
+
+PS D:\Study\Bachelor SUT\Year 4 - Final Unit\Spring 2026\COS40007 - Artificial Intelligence Engineering\Final Project\AI4Eng_Theme5\backend> aws lambda update-function-code --function-name 5g-dashboard-api --image-uri 677276113002.dkr.ecr.us-east-1.amazonaws.com/5g-dashboard-backend:latest
+{
+    "FunctionName": "5g-dashboard-api",
+    "FunctionArn": "arn:aws:lambda:us-east-1:677276113002:function:5g-dashboard-api",
+    "Role": "arn:aws:iam::677276113002:role/5g-fastapi-lambda-role",
+    "CodeSize": 0,
+    "Description": "",
+    "Timeout": 30,
+    "MemorySize": 512,
+    "LastModified": "2026-04-03T05:02:00.000+0000",
+    "CodeSha256": "214c775db9a30861cb047cd0c4874882c34fd108d219ae21599de2ac70f0b9b6",
+    "Version": "$LATEST",
+    "Environment": {
+        "Variables": {
+            "CONTACT_TO_EMAIL": "lehoangtrietthong@gmail.com",
+            "RESEND_API_KEY": "re_bwHJbgTM_CkDkjbDpEN22oYRLSgu4uWCW",
+            "S3_ARTIFACTS_BUCKET": "5g-dashboard-artifacts"
+        }
+    },
+    "TracingConfig": {
+        "Mode": "PassThrough"
+    },
+    "RevisionId": "6d90d926-d2e2-46ca-98fc-a51ee81217c0",
+    "State": "Active",
+    "LastUpdateStatus": "InProgress",
+    "LastUpdateStatusReason": "The function is being created.",
+    "LastUpdateStatusReasonCode": "Creating",
+    "PackageType": "Image",
+    "Architectures": [
+        "x86_64"
+    ],
+    "EphemeralStorage": {
+        "Size": 512
+    },
+    "SnapStart": {
+        "ApplyOn": "None",
+        "OptimizationStatus": "Off"
+    },
+    "LoggingConfig": {
+        "LogFormat": "Text",
+        "LogGroup": "/aws/lambda/5g-dashboard-api"
+    }
+}
+
+
+# Health check
+curl.exe https://lhrvjvhw3g.execute-api.us-east-1.amazonaws.com/
+{"message":"5G Network Quality API is running."}
+# Map data
+curl.exe https://lhrvjvhw3g.execute-api.us-east-1.amazonaws.com/api/map-data
+[{"lat":-37.72531617777778,"lng":144.75016244444444,"cluster":1},{"lat":-37.72498952459016,"lng":144.75957278688526,"cluster":0},{"lat":-37.72786554833416,"lng":144.76630264565895,"cluster":0},{"lat":-37.72780457647188,"lng":144.77251961955926,"cluster":0},{"lat":-37.72811350598164,"lng":144.78021082815542,"cluster":2},{"lat":-37.729655964934736,"lng":144.78780997440492,"cluster":2},{"lat":-37.728318914656775,"lng":144.79486181247324,"cluster":2},{"lat":-37.72834368931361,"lng":144.80122339146206,"cluster":2},{"lat":-37.72969328090666,"lng":144.80957012966445,"cluster":1},{"lat":-37.7301757844352,"lng":144.8154875075017,"cluster":0},{"lat":-37.729213789077214,"lng":144.82344482946223,"cluster":1},{"lat":-37.72589049668099,"lng":144.83712220226474,"cluster":2},{"lat":-37.72544172923588,"lng":144.84576750830564,"cluster":2},{"lat":-37.72736146008307,"lng":144.84986865620672,"cluster":2},{"lat":-37.725758724409445,"lng":144.85810165354332,"cluster":1},{"lat":-37.724848,"lng":144.863528,"cluster":1},{"lat":-37.721820460500965,"lng":144.751147283237,"cluster":1},{"lat":-37.7244839,"lng":144.755526,"cluster":0},{"lat":-37.72099655035911,"lng":144.7672162268248,"cluster":0},{"lat":-37.72069321709634,"lng":144.77187372795115,"cluster":0},{"lat":-37.72066005506316,"lng":144.7791284356304,"cluster":2},{"lat":-37.71840614849624,"lng":144.78929802631578,"cluster":2},{"lat":-37.721455508862746,"lng":144.79472901803922,"cluster":2},{"lat":-37.72101967283393,"lng":144.8007330595668,"cluster":1},{"lat":-37.7204920497076,"lng":144.80677032894735,"cluster":0},{"lat":-37.720552784706506,"lng":144.8243442087049,"cluster":0},{"lat":-37.72065769512323,"lng":144.83052655689565,"cluster":2},{"lat":-37.7214043958648,"lng":144.83610665219035,"cluster":2},{"lat":-37.72331291891892,"lng":144.84317328482328,"cluster":2},{"lat":-37.72060635221817,"lng":144.85214375744192,"cluster":1},{"lat":-37.72130094994179,"lng":144.85751103608848,"cluster":1},{"lat":-37.72215610714286,"lng":144.86703,"cluster":1},{"lat":-37.718522166666666,"lng":144.87179833333332,"cluster":2},{"lat":-37.716301317829455,"lng":144.75398868217053,"cluster":1},{"lat":-37.71184702083334,"lng":144.75544114583332,"cluster":0},{"lat":-37.71408734902662,"lng":144.76804206197855,"cluster":0},{"lat":-37.713257200940944,"lng":144.77233803330444,"cluster":0},{"lat":-37.71340270925853,"lng":144.77964989150598,"cluster":2},{"lat":-37.71309735518958,"lng":144.7877287307545,"cluster":2},{"lat":-37.71304422179789,"lng":144.7941716867411,"cluster":2},{"lat":-37.71316946804247,"lng":144.80127625726308,"cluster":1},{"lat":-37.71368774793389,"lng":144.80832493238168,"cluster":0},{"lat":-37.71185664871306,"lng":144.81458381315537,"cluster":0},{"lat":-37.71281076282487,"lng":144.8246321839706,"cluster":0},{"lat":-37.71472089894812,"lng":144.8303237804549,"cluster":1},{"lat":-37.71470554282116,"lng":144.83565937027709,"cluster":2},{"lat":-37.71295912887598,"lng":144.8532292577951,"cluster":1},{"lat":-37.71433381334309,"lng":144.85826031998326,"cluster":1},{"lat":-37.712697269230766,"lng":144.86834384615383,"cluster":2},{"lat":-37.71577143,"lng":144.8749602,"cluster":2},{"lat":-37.71233152941176,"lng":144.8801031372549,"cluster":1},{"lat":-37.70439855790867,"lng":144.75354651224356,"cluster":1},{"lat":-37.70954636842106,"lng":144.8836857894737,"cluster":0},{"lat":-37.70567715756656,"lng":144.75804479777554,"cluster":1},{"lat":-37.70616219881361,"lng":144.7662777597553,"cluster":0},{"lat":-37.70804429105184,"lng":144.77276344305713,"cluster":0},{"lat":-37.70707091268001,"lng":144.78029310151035,"cluster":1},{"lat":-37.70741216628273,"lng":144.78695880977313,"cluster":2},{"lat":-37.70790145849391,"lng":144.79482121341528,"cluster":2},{"lat":-37.70818911584514,"lng":144.80113822490523,"cluster":2},{"lat":-37.70693456918327,"lng":144.80807468425485,"cluster":1},{"lat":-37.70646121676737,"lng":144.8144111102719,"cluster":1},{"lat":-37.70797372527473,"lng":144.82144343551187,"cluster":0},{"lat":-37.70691034241706,"lng":144.83241592417062,"cluster":2},{"lat":-37.708319472,"lng":144.83525672000002,"cluster":2},{"lat":-37.70750225,"lng":144.86078692307692,"cluster":2},{"lat":-37.70671278125,"lng":144.865496875,"cluster":2},{"lat":-37.70177447280534,"lng":144.75379199427482,"cluster":1},{"lat":-37.70096090889277,"lng":144.75838119659983,"cluster":2},{"lat":-37.7012939838765,"lng":144.7653862109777,"cluster":0},{"lat":-37.70140071368039,"lng":144.77018760290557,"cluster":0},{"lat":-37.702287183363474,"lng":144.78099473779386,"cluster":2},{"lat":-37.70203973965627,"lng":144.78777383831954,"cluster":2},{"lat":-37.70171382139952,"lng":144.80138872253866,"cluster":2},{"lat":-37.701940975098296,"lng":144.80826813892529,"cluster":2},{"lat":-37.703015888888885,"lng":144.81249666666668,"cluster":2},{"lat":-37.70210910661765,"lng":144.82200279411765,"cluster":0},{"lat":-37.82647735476464,"lng":144.78625269804823,"cluster":2},{"lat":-37.8278094754902,"lng":144.7954725490196,"cluster":1},{"lat":-37.82048547075427,"lng":144.78735668574566,"cluster":1},{"lat":-37.82165226364316,"lng":144.79581352105657,"cluster":0},{"lat":-37.8215781875,"lng":144.797996875,"cluster":2},{"lat":-37.81199612164751,"lng":144.77124687739465,"cluster":2},{"lat":-37.81301476,"lng":144.7807940235294,"cluster":2},{"lat":-37.81396909385724,"lng":144.78725905456415,"cluster":2},{"lat":-37.81457590119761,"lng":144.79531868263473,"cluster":1},{"lat":-37.81479848108108,"lng":144.8009562972973,"cluster":0},{"lat":-37.813213037756206,"lng":144.81013450916936,"cluster":2},{"lat":-37.813411960504666,"lng":144.81670381788263,"cluster":2},{"lat":-37.80727474387528,"lng":144.76969958797326,"cluster":1},{"lat":-37.8068233199766,"lng":144.7882030691235,"cluster":2},{"lat":-37.80844476470588,"lng":144.80791029411765,"cluster":2},{"lat":-37.80639728975265,"lng":144.81864666666667,"cluster":2},{"lat":-37.80358527086882,"lng":144.8230503577513,"cluster":2},{"lat":-37.79641715555556,"lng":144.75344051851852,"cluster":1},{"lat":-37.79712451103843,"lng":144.7585329721995,"cluster":2},{"lat":-37.79707562311828,"lng":144.76537711111112,"cluster":1},{"lat":-37.79839277466279,"lng":144.7715957207088,"cluster":1},{"lat":-37.79921392721055,"lng":144.7800097703957,"cluster":1},{"lat":-37.79967147907391,"lng":144.78857559621144,"cluster":2},{"lat":-37.79779795963542,"lng":144.79462053645832,"cluster":2},{"lat":-37.79855564566802,"lng":144.8015468631579,"cluster":1},{"lat":-37.79947451790944,"lng":144.8088244732297,"cluster":2},{"lat":-37.79947747679284,"lng":144.8162616133113,"cluster":2},{"lat":-37.80036076027192,"lng":144.8235102539238,"cluster":2},{"lat":-37.80057510105338,"lng":144.82885902695946,"cluster":2},{"lat":-37.79659165217391,"lng":144.83415739130433,"cluster":2},{"lat":-37.79358113652449,"lng":144.7533804172099,"cluster":1},{"lat":-37.79305461591349,"lng":144.7579709753317,"cluster":1},{"lat":-37.7939219621734,"lng":144.7652638402613,"cluster":2},{"lat":-37.793536488756615,"lng":144.7702744510582,"cluster":2},{"lat":-37.79297593508176,"lng":144.78867168589943,"cluster":2},{"lat":-37.79321919395228,"lng":144.79390363256948,"cluster":2},{"lat":-37.79203876335674,"lng":144.8016095706285,"cluster":2},{"lat":-37.79242444480419,"lng":144.80978691755,"cluster":2},{"lat":-37.79229201182126,"lng":144.81617072306722,"cluster":1},{"lat":-37.792683984667526,"lng":144.82258533247256,"cluster":0},{"lat":-37.79363516372323,"lng":144.83140030458154,"cluster":2},{"lat":-37.79122628187135,"lng":144.83826826120858,"cluster":0},{"lat":-37.7915411767941,"lng":144.8433035171026,"cluster":0},{"lat":-37.78523834927277,"lng":144.7646110579797,"cluster":0},{"lat":-37.78762768262411,"lng":144.75426973404254,"cluster":0},{"lat":-37.78565369158999,"lng":144.75769186017882,"cluster":0},{"lat":-37.78543113781512,"lng":144.77104765266108,"cluster":0},{"lat":-37.78629587161893,"lng":144.78918345167062,"cluster":2},{"lat":-37.78556458807862,"lng":144.79450619213813,"cluster":2},{"lat":-37.78563172916082,"lng":144.80152025049117,"cluster":2},{"lat":-37.78653072799339,"lng":144.80969215786402,"cluster":2},{"lat":-37.78665177859034,"lng":144.8155169079141,"cluster":1},{"lat":-37.78651966729781,"lng":144.82212759715082,"cluster":1},{"lat":-37.78673710056772,"lng":144.8300052514193,"cluster":2},{"lat":-37.786463234506215,"lng":144.8380685904643,"cluster":0},{"lat":-37.78599118736952,"lng":144.84338223590814,"cluster":0},{"lat":-37.778468033660815,"lng":144.75856809201696,"cluster":0},{"lat":-37.778669661053925,"lng":144.76522564220184,"cluster":0},{"lat":-37.77898635093214,"lng":144.77133788814317,"cluster":0},{"lat":-37.77967223783784,"lng":144.7801361081081,"cluster":1},{"lat":-37.781142747747744,"lng":144.78716369369369,"cluster":2},{"lat":-37.77888790175549,"lng":144.7939872730851,"cluster":1},{"lat":-37.778894681080125,"lng":144.80175580480056,"cluster":2},{"lat":-37.77921713037448,"lng":144.80816991083813,"cluster":1},{"lat":-37.77873685082147,"lng":144.81612177875138,"cluster":1},{"lat":-37.779014533627134,"lng":144.82147586319218,"cluster":2},{"lat":-37.77639526580602,"lng":144.8306851572327,"cluster":2},{"lat":-37.77687322675055,"lng":144.83865580689277,"cluster":2},{"lat":-37.778643150285305,"lng":144.84462440568996,"cluster":2},{"lat":-37.76803861904762,"lng":144.75413857142857,"cluster":2},{"lat":-37.77043266346854,"lng":144.7584658659218,"cluster":1},{"lat":-37.77044141686383,"lng":144.76607901012588,"cluster":1},{"lat":-37.77056768633826,"lng":144.77345955340164,"cluster":2},{"lat":-37.77027494452307,"lng":144.77793147608264,"cluster":2},{"lat":-37.77066628430666,"lng":144.7880369166066,"cluster":2},{"lat":-37.771167586950256,"lng":144.79494713770728,"cluster":2},{"lat":-37.77115922195745,"lng":144.80052349787232,"cluster":2},{"lat":-37.76876423741152,"lng":144.80884469362994,"cluster":0},{"lat":-37.76788443287671,"lng":144.81342624657535,"cluster":0},{"lat":-37.76850385208471,"lng":144.82381218563864,"cluster":0},{"lat":-37.77056909514152,"lng":144.8315270289216,"cluster":1},{"lat":-37.77032162516284,"lng":144.83761480044214,"cluster":2},{"lat":-37.77125435940729,"lng":144.8444150367146,"cluster":2},{"lat":-37.77072793232044,"lng":144.8486442403315,"cluster":2},{"lat":-37.7620302371134,"lng":144.75333050753372,"cluster":1},{"lat":-37.76372776970602,"lng":144.7589380636839,"cluster":0},{"lat":-37.764469525227206,"lng":144.76488981301577,"cluster":0},{"lat":-37.76408046192569,"lng":144.7735712593813,"cluster":1},{"lat":-37.76390364577599,"lng":144.77933018208765,"cluster":0},{"lat":-37.7645576292738,"lng":144.7874821121786,"cluster":0},{"lat":-37.76318690082987,"lng":144.79439588934994,"cluster":0},{"lat":-37.76498215372714,"lng":144.80216028129394,"cluster":1},{"lat":-37.76337989354521,"lng":144.80882147517931,"cluster":0},{"lat":-37.76413452838919,"lng":144.81623488119058,"cluster":0},{"lat":-37.76433514655918,"lng":144.82368465316554,"cluster":1},{"lat":-37.76444644068741,"lng":144.83010368048372,"cluster":1},{"lat":-37.76628879115125,"lng":144.83767727076378,"cluster":2},{"lat":-37.76596018685714,"lng":144.84399737257144,"cluster":2},{"lat":-37.76451387538692,"lng":144.85078170544185,"cluster":2},{"lat":-37.76030840697675,"lng":144.75043029069766,"cluster":1},{"lat":-37.75700557168711,"lng":144.75986636436758,"cluster":0},{"lat":-37.755876585894775,"lng":144.76491634546483,"cluster":0},{"lat":-37.75702995275591,"lng":144.77253295742693,"cluster":1},{"lat":-37.75761750884854,"lng":144.7777258951965,"cluster":1},{"lat":-37.75668817494052,"lng":144.7874538556701,"cluster":0},{"lat":-37.75626589623686,"lng":144.79367704067516,"cluster":1},{"lat":-37.75689988254906,"lng":144.802093507069,"cluster":1},{"lat":-37.75736703488474,"lng":144.80818706372162,"cluster":0},{"lat":-37.75655583994953,"lng":144.81537157721053,"cluster":0},{"lat":-37.756835261843136,"lng":144.82355563594777,"cluster":1},{"lat":-37.75666935898333,"lng":144.82987245903934,"cluster":0},{"lat":-37.75462886597938,"lng":144.83738649484536,"cluster":1},{"lat":-37.75767047487615,"lng":144.84772829440905,"cluster":0},{"lat":-37.74951991249463,"lng":144.76070167551285,"cluster":0},{"lat":-37.74932855424841,"lng":144.7655494260979,"cluster":1},{"lat":-37.7490904130576,"lng":144.77194797423127,"cluster":2},{"lat":-37.74979553493413,"lng":144.7796163898616,"cluster":2},{"lat":-37.74867804325652,"lng":144.78599094068758,"cluster":1},{"lat":-37.74789478861123,"lng":144.79506677454594,"cluster":2},{"lat":-37.749875493527725,"lng":144.80216328246357,"cluster":2},{"lat":-37.74962834265478,"lng":144.8086609415069,"cluster":0},{"lat":-37.74925709433148,"lng":144.81707148481743,"cluster":0},{"lat":-37.74944447970057,"lng":144.82279500439216,"cluster":0},{"lat":-37.74990153257189,"lng":144.83056378379746,"cluster":1},{"lat":-37.74835005152372,"lng":144.8367742821238,"cluster":1},{"lat":-37.74495627024129,"lng":144.76112958713136,"cluster":1},{"lat":-37.742379991910326,"lng":144.76582444134078,"cluster":1},{"lat":-37.742493303655486,"lng":144.77190120230347,"cluster":1},{"lat":-37.74235870554013,"lng":144.77947194812128,"cluster":1},{"lat":-37.74377783010309,"lng":144.78669656907218,"cluster":1},{"lat":-37.74441985151117,"lng":144.79499153876478,"cluster":2},{"lat":-37.74183859770946,"lng":144.8020429834107,"cluster":2},{"lat":-37.74263321178313,"lng":144.808159374633,"cluster":1},{"lat":-37.74236165772599,"lng":144.816398425868,"cluster":0},{"lat":-37.74196520070869,"lng":144.82318511895724,"cluster":1},{"lat":-37.7442644696734,"lng":144.82812405132194,"cluster":2},{"lat":-37.74561301834863,"lng":144.84032178899082,"cluster":0},{"lat":-37.74312884634146,"lng":144.8449924237805,"cluster":0},{"lat":-37.73966575372605,"lng":144.85076451738823,"cluster":1},{"lat":-37.736681042781214,"lng":144.76603420667422,"cluster":1},{"lat":-37.735997861638886,"lng":144.77208178342465,"cluster":0},{"lat":-37.735418162560826,"lng":144.78017553604016,"cluster":0},{"lat":-37.73514749575029,"lng":144.78692446658852,"cluster":1},{"lat":-37.73516298297067,"lng":144.79546126300852,"cluster":1},{"lat":-37.73614394536367,"lng":144.801831247028,"cluster":1},{"lat":-37.73522411513933,"lng":144.80903338812544,"cluster":1},{"lat":-37.73500528042632,"lng":144.8160526665713,"cluster":0},{"lat":-37.73568620082276,"lng":144.82320315603454,"cluster":2},{"lat":-37.73634010547565,"lng":144.82876775674995,"cluster":2},{"lat":-37.7366360877297,"lng":144.85000481327802,"cluster":1}]
+# Forecast data
+curl.exe https://lhrvjvhw3g.execute-api.us-east-1.amazonaws.com/api/forecast-data
+4Eng_Theme5\backend> curl.exe https://lhrvjvhw3g.execute-api.us-east-1.amazonaws.com/api/forecast-data
+[{"timestamp":"2022-07-22 04:00","predicted_throughput":30.85,"predicted_latency":77.24},{"timestamp":"2022-07-22 05:00","predicted_throughput":31.17,"predicted_latency":76.49},{"timestamp":"2022-07-22 06:00","predicted_throughput":31.26,"predicted_latency":77.17},{"timestamp":"2022-07-22 07:00","predicted_throughput":31.34,"predicted_latency":77.12},{"timestamp":"2022-07-22 08:00","predicted_throughput":31.07,"predicted_latency":77.05},{"timestamp":"2022-07-22 09:00","predicted_throughput":28.55,"predicted_latency":76.68},{"timestamp":"2022-07-22 10:00","predicted_throughput":27.7,"predicted_latency":76.79},{"timestamp":"2022-07-22 11:00","predicted_throughput":28.7,"predicted_latency":76.18},{"timestamp":"2022-07-22 12:00","predicted_throughput":28.79,"predicted_latency":75.77},{"timestamp":"2022-07-22 13:00","predicted_throughput":28.87,"predicted_latency":75.92},{"timestamp":"2022-07-22 14:00","predicted_throughput":28.82,"predicted_latency":75.9},{"timestamp":"2022-07-22 15:00","predicted_throughput":28.96,"predicted_latency":75.92}]
+# Then open your dashboard in a browser:
+https://d33m3uevv39v9p.cloudfront.net
+
+
+Modify the Backend to call the true API from S3:
+# 1. Rebuild & push backend Lambda image
+cd backend
+docker build -f Dockerfile.lambda -t 5g-dashboard-backend --provenance=false .
+docker tag 5g-dashboard-backend:latest 677276113002.dkr.ecr.us-east-1.amazonaws.com/5g-dashboard-backend:latest
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 677276113002.dkr.ecr.us-east-1.amazonaws.com
+docker push 677276113002.dkr.ecr.us-east-1.amazonaws.com/5g-dashboard-backend:latest
+aws lambda update-function-code --function-name 5g-dashboard-api --image-uri 677276113002.dkr.ecr.us-east-1.amazonaws.com/5g-dashboard-backend:latest
+
+# 2. Rebuild & redeploy frontend
+cd ../frontend
+$env:VITE_API_BASE_URL="https://lhrvjvhw3g.execute-api.us-east-1.amazonaws.com"
+npm run build
+aws s3 sync dist/ s3://5g-dashboard-frontend/ --delete
+
+# 3. Invalidate CloudFront cache so the new frontend is served immediately
+aws cloudfront create-invalidation --distribution-id E30LMRNQDG6P0F --paths "/*"
+
+
+
+
+Modify FE:
+# 1. Rebuild frontend
+cd frontend
+$env:VITE_API_BASE_URL="https://lhrvjvhw3g.execute-api.us-east-1.amazonaws.com"
+npm run build
+
+# 2. Sync to S3
+aws s3 sync dist/ s3://5g-dashboard-frontend/ --delete
+
+# 3. Invalidate CloudFront cache so changes appear immediately
+aws cloudfront create-invalidation --distribution-id E30LMRNQDG6P0F --paths "/*"
+
+PS D:\Study\Bachelor SUT\Year 4 - Final Unit\Spring 2026\COS40007 - Artificial Intelligence Engineering\Final Project\AI4Eng_Theme5\frontend> aws s3 sync dist/ s3://5g-dashboard-frontend/ --delete
+delete: s3://5g-dashboard-frontend/assets/AboutView-CvJY5NWj.js
+upload: dist\assets\AboutView-CHCChDs5.js to s3://5g-dashboard-frontend/assets/AboutView-CHCChDs5.js
+upload: dist\assets\NotFoundView-hHmdE3Qd.js to s3://5g-dashboard-frontend/assets/NotFoundView-hHmdE3Qd.js
+delete: s3://5g-dashboard-frontend/assets/AdminView-BH-z-V_j.js
+delete: s3://5g-dashboard-frontend/assets/ArchitectureView-BYkIN9WM.js
+delete: s3://5g-dashboard-frontend/assets/ContactView-CmMHfGyK.js
+delete: s3://5g-dashboard-frontend/assets/AboutView-CwBzCifl.css
+delete: s3://5g-dashboard-frontend/assets/LoginView-B2x1dZDu.js
+delete: s3://5g-dashboard-frontend/assets/NotFoundView-BY4kd8Yi.js
+upload: dist\assets\LoginView-d90MXfl_.js to s3://5g-dashboard-frontend/assets/LoginView-d90MXfl_.js
+delete: s3://5g-dashboard-frontend/assets/index-BshRPx7p.js
+delete: s3://5g-dashboard-frontend/assets/index-DX2FPVMo.css
+upload: dist\assets\AdminView-4QkFUNZA.js to s3://5g-dashboard-frontend/assets/AdminView-4QkFUNZA.js
+upload: dist\assets\ContactView-D9dtE6O6.js to s3://5g-dashboard-frontend/assets/ContactView-D9dtE6O6.js
+upload: dist\assets\index-DVmL_wAe.js to s3://5g-dashboard-frontend/assets/index-DVmL_wAe.js
+upload: dist\index.html to s3://5g-dashboard-frontend/index.html
+upload: dist\assets\AboutView-BbaKFV6e.css to s3://5g-dashboard-frontend/assets/AboutView-BbaKFV6e.css
+upload: dist\assets\ArchitectureView-DC31pd7J.js to s3://5g-dashboard-frontend/assets/ArchitectureView-DC31pd7J.js
+upload: dist\assets\index-oCYM6jwf.css to s3://5g-dashboard-frontend/assets/index-oCYM6jwf.css
+upload: dist\assets\AWSArchitecture-B25BVSgY.png to s3://5g-dashboard-frontend/assets/AWSArchitecture-B25BVSgY.png
+PS D:\Study\Bachelor SUT\Year 4 - Final Unit\Spring 2026\COS40007 - Artificial Intelligence Engineering\Final Project\AI4Eng_Theme5\frontend> aws cloudfront create-invalidation --distribution-id E30LMRNQDG6P0F --paths "/*"
+{
+    "Location": "https://cloudfront.amazonaws.com/2020-05-31/distribution/E30LMRNQDG6P0F/invalidation/I47HSJ8U3P0IZT9I3AQC5KRUXB",
+    "Invalidation": {
+        "Id": "I47HSJ8U3P0IZT9I3AQC5KRUXB",
+        "Status": "InProgress",
+        "CreateTime": "2026-04-03T05:51:58.845000+00:00",
+        "InvalidationBatch": {
+            "Paths": {
+                "Quantity": 1,
+                "Items": [
+                    "/*"
+                ]
+            },
+            "CallerReference": "cli-1775195517-283652"
+        }
+    }
+}

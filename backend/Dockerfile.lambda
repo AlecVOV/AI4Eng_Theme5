@@ -1,0 +1,18 @@
+FROM public.ecr.aws/lambda/python:3.10
+
+# Copy Lambda-only requirements and install (excludes training deps like xgboost/catboost)
+COPY requirements.lambda.txt ${LAMBDA_TASK_ROOT}/
+RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.lambda.txt
+
+# Copy application code
+COPY app/ ${LAMBDA_TASK_ROOT}/app/
+COPY main.py ${LAMBDA_TASK_ROOT}/
+
+# Copy model artifacts and data for inference
+# (In production, these would be loaded from S3 at runtime)
+COPY models/ ${LAMBDA_TASK_ROOT}/models/
+COPY data/map_data.csv ${LAMBDA_TASK_ROOT}/data/map_data.csv
+COPY metrics/forecast_data.csv ${LAMBDA_TASK_ROOT}/metrics/forecast_data.csv
+
+# Mangum handler: app/main.py defines `handler = Mangum(app)`
+CMD ["app.main.handler"]

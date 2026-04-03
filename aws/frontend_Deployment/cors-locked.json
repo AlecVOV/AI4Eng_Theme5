@@ -1,0 +1,6 @@
+{
+  "AllowOrigins": ["https://d33m3uevv39v9p.cloudfront.net"],
+  "AllowMethods": ["GET", "POST", "OPTIONS"],
+  "AllowHeaders": ["Content-Type", "Authorization"],
+  "MaxAge": 3600
+}

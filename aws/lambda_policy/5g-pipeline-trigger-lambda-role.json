@@ -1,0 +1,30 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadRawBucket",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": "arn:aws:s3:::5g-dashboard-raw-data/*"
+    },
+    {
+      "Sid": "StartSageMakerPipeline",
+      "Effect": "Allow",
+      "Action": [
+        "sagemaker:StartPipelineExecution",
+        "sagemaker:DescribePipelineExecution"
+      ],
+      "Resource": "arn:aws:sagemaker:*:*:pipeline/5g-quality-pipeline*"
+    },
+    {
+      "Sid": "Logging",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:*:*:*"
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 import { supabase } from '../services/supabase'
 
 const router = useRouter()
@@ -23,36 +24,35 @@ interface ModelArtifact {
   accuracy: string
 }
 
-// Mock data — replace with axios calls once backend is ready
-const cleanedDatasets = ref<CleanedDataset[]>([
-  { name: '2026-03-15-truck-combined-cleaned.csv', size: '4.2 MB', date: '2026-03-15' },
-  { name: '2026-03-22-truck-combined-cleaned.csv', size: '3.8 MB', date: '2026-03-22' },
-  { name: '2026-03-28-truck-combined-cleaned.csv', size: '5.1 MB', date: '2026-03-28' },
-])
+const API = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
-const modelArtifacts = ref<ModelArtifact[]>([
-  { version: 'v1.0.0', file: 'kmeans_v1.0.0.pkl', date: '2026-03-16', accuracy: '92.4%' },
-  { version: 'v1.1.0', file: 'kmeans_v1.1.0.pkl', date: '2026-03-23', accuracy: '94.1%' },
-  { version: 'v1.2.0', file: 'kmeans_v1.2.0.pkl', date: '2026-03-29', accuracy: '95.7%' },
-])
+const cleanedDatasets = ref<CleanedDataset[]>([])
+const modelArtifacts = ref<ModelArtifact[]>([])
+const loadingData = ref(true)
 
-// const API = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
-//
-// async function fetchCleanedData(): Promise<void> {
-//   const { data } = await axios.get<CleanedDataset[]>(`${API}/api/cleaned-data`)
-//   cleanedDatasets.value = data
-// }
-//
-// async function fetchModels(): Promise<void> {
-//   const { data } = await axios.get<ModelArtifact[]>(`${API}/api/models`)
-//   modelArtifacts.value = data
-// }
+async function fetchCleanedData(): Promise<void> {
+  try {
+    const { data } = await axios.get<CleanedDataset[]>(`${API}/api/cleaned-data`)
+    cleanedDatasets.value = data
+  } catch {
+    cleanedDatasets.value = []
+  }
+}
+
+async function fetchModels(): Promise<void> {
+  try {
+    const { data } = await axios.get<ModelArtifact[]>(`${API}/api/models`)
+    modelArtifacts.value = data
+  } catch {
+    modelArtifacts.value = []
+  }
+}
 
 onMounted(async () => {
   const { data } = await supabase.auth.getUser()
   userEmail.value = data.user?.email ?? 'Admin'
-  // fetchCleanedData()
-  // fetchModels()
+  await Promise.all([fetchCleanedData(), fetchModels()])
+  loadingData.value = false
 })
 
 function onFileChange(event: Event): void {
@@ -210,7 +210,7 @@ async function handleSignOut(): Promise<void> {
                   </p>
                   <p class="text-xs text-slate-400">{{ model.date }}</p>
                 </div>
-                <span class="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">{{ model.accuracy }}</span>
+                <!-- <span class="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">{{ model.accuracy }}</span> -->
               </div>
               <div v-if="modelArtifacts.length === 0" class="px-6 py-8 text-center text-sm text-slate-400">
                 No model artifacts found.
