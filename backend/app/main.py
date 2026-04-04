@@ -190,6 +190,11 @@ def _list_s3_objects(bucket: str, prefix: str = "") -> list[dict[str, Any]]:
     return results
 
 
+@app.get("/api/raw-data")
+def get_raw_data() -> list[dict[str, Any]]:
+    return _list_s3_objects(S3_RAW_BUCKET)
+
+
 @app.get("/api/cleaned-data")
 def get_cleaned_data() -> list[dict[str, Any]]:
     return _list_s3_objects(S3_CLEANED_BUCKET)

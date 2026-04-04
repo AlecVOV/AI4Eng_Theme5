@@ -11,6 +11,12 @@ const csvFile = ref<File | null>(null)
 const uploading = ref(false)
 const uploadStatus = ref<{ ok: boolean; message: string } | null>(null)
 
+interface RawDataset {
+  name: string
+  size: string
+  date: string
+}
+
 interface CleanedDataset {
   name: string
   size: string
@@ -26,9 +32,20 @@ interface ModelArtifact {
 
 const API = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
+const rawDatasets = ref<RawDataset[]>([])
+const rawSearch = ref('')
 const cleanedDatasets = ref<CleanedDataset[]>([])
 const modelArtifacts = ref<ModelArtifact[]>([])
 const loadingData = ref(true)
+
+async function fetchRawData(): Promise<void> {
+  try {
+    const { data } = await axios.get<RawDataset[]>(`${API}/api/raw-data`)
+    rawDatasets.value = data
+  } catch {
+    rawDatasets.value = []
+  }
+}
 
 async function fetchCleanedData(): Promise<void> {
   try {
@@ -51,7 +68,7 @@ async function fetchModels(): Promise<void> {
 onMounted(async () => {
   const { data } = await supabase.auth.getUser()
   userEmail.value = data.user?.email ?? 'Admin'
-  await Promise.all([fetchCleanedData(), fetchModels()])
+  await Promise.all([fetchRawData(), fetchCleanedData(), fetchModels()])
   loadingData.value = false
 })
 
@@ -166,6 +183,58 @@ async function handleSignOut(): Promise<void> {
       <!-- Section 2: Artifact & Data Viewer -->
       <section>
         <h2 class="mb-4 text-lg font-semibold text-slate-800">Artifact &amp; Data Viewer</h2>
+
+        <!-- Raw Datasets — full-width table -->
+        <div class="mb-6 rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+            <h3 class="text-sm font-bold uppercase tracking-wide text-slate-500">Raw Datasets (S3)</h3>
+            <span class="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-600">{{ rawDatasets.length }} files</span>
+          </div>
+          <div class="px-6 py-3">
+            <input
+              v-model="rawSearch"
+              type="text"
+              placeholder="Search files…"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+          <div class="max-h-[28rem] overflow-y-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="px-6 py-3 font-semibold">#</th>
+                  <th class="px-6 py-3 font-semibold">File Name</th>
+                  <th class="px-6 py-3 font-semibold text-right">Size</th>
+                  <th class="px-6 py-3 font-semibold text-right">Last Modified</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr
+                  v-for="(ds, idx) in rawDatasets.filter(d => d.name.toLowerCase().includes(rawSearch.toLowerCase()))"
+                  :key="ds.name"
+                  class="transition hover:bg-slate-50"
+                >
+                  <td class="px-6 py-3 text-slate-400">{{ idx + 1 }}</td>
+                  <td class="px-6 py-3 font-medium text-slate-800">{{ ds.name }}</td>
+                  <td class="px-6 py-3 text-right text-slate-600">{{ ds.size }}</td>
+                  <td class="px-6 py-3 text-right text-slate-400">{{ ds.date }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div
+              v-if="rawDatasets.length === 0"
+              class="px-6 py-10 text-center text-sm text-slate-400"
+            >
+              No raw datasets found in S3.
+            </div>
+            <div
+              v-else-if="rawDatasets.filter(d => d.name.toLowerCase().includes(rawSearch.toLowerCase())).length === 0"
+              class="px-6 py-10 text-center text-sm text-slate-400"
+            >
+              No files match &ldquo;{{ rawSearch }}&rdquo;
+            </div>
+          </div>
+        </div>
 
         <div class="grid gap-6 lg:grid-cols-2">
 
