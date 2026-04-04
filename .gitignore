@@ -1,6 +1,31 @@
-# Project documentation (kept locally, not in repo)
+# ── Project documentation (local only) ──
 What We Have Done.md
 aws/AWS_Deployment_Plan.md
 
-# CLI logs
+# ── CLI / deployment logs ──
 **/cli_log.txt
+**/cli_run_log.txt
+
+# ── Secrets / env files ──
+frontend/.env
+backend/.env
+
+# ── Python caches ──
+**/__pycache__/
+*.pyc
+
+# ── Data files (stored in S3, too large for git) ──
+backend/data/*.csv
+backend/metrics/*.csv
+backend/notebooks/data/
+backend/notebooks/metrics/
+
+# ── Model artifacts (stored in S3) ──
+backend/models/
+backend/notebooks/models/
+
+# ── Training logs ──
+backend/notebooks/catboost_info/
+
+# ── Lambda build artifacts ──
+aws/lambda_trigger/function.zip
