@@ -5,12 +5,12 @@ Steps:
   1. PreprocessingStep  — sklearn container, runs scripts/preprocess.py
      (loads raw CSVs, cleans, resamples, engineers features, exports cleaned_5g_data.csv)
   2. ClusteringTrainStep — sklearn container, runs scripts/train_clustering.py
-     (KMeans on 9 spatial features, exports map_data.csv + model artefacts)
+     (Winsorise → log1p → RobustScaler → PCA → KMeans on 5 features, exports map_data.csv)
   3. ForecastTrainStep   — tensorflow container, runs scripts/train_forecasting.py
-     (XGBoost + LSTM + CNN benchmark, 12-h forecast, exports forecast_data.csv + models)
+     (XGBoost + CatBoost + Bidirectional LSTM + CNN benchmark, 12-h forecast)
 
-Note: The forecasting script imports tensorflow + xgboost. We use the TensorFlow
-training image for Step 3 (xgboost is pip-installed at runtime via requirements).
+Note: The forecasting script imports tensorflow + xgboost + catboost. We use the TensorFlow
+training image for Step 3 (xgboost and catboost are pip-installed at runtime via requirements).
 """
 import sagemaker
 from sagemaker.inputs import TrainingInput

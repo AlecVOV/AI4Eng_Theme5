@@ -1,10 +1,11 @@
 """
-SageMaker Training Job — XGBoost + LSTM + 1D CNN Forecasting Benchmark.
+SageMaker Training Job — XGBoost + CatBoost + LSTM + 1D CNN Forecasting Benchmark.
 
 Replicates the full pipeline from Notebook 3 (3_model_forecasting.ipynb):
   1. Load cleaned_5g_data.csv, reconstruct targets, aggregate hourly per zone
   2. Grid-fill + proper temporal lag features (lag1–lag3, rolling mean, upload lags)
-  3. Train XGBoost (25 features), LSTM (128→64), 1D CNN (128→64)
+  3. Train XGBoost (25 features), CatBoost (25 features),
+     Bidirectional LSTM (128→64 + BatchNorm), 1D CNN (128→64 + GAP + BatchNorm)
   4. Benchmark (R², MAE, RMSE) — select winner by best avg R²
   5. Autoregressive 12-hour dashboard forecast → metrics/forecast_data.csv
   6. Save model artefacts + pipeline_config.pkl
@@ -23,20 +24,23 @@ import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import MinMaxScaler
 from xgboost import XGBRegressor
+from catboost import CatBoostRegressor
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 import tensorflow as tf
-from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.layers import (
-    LSTM, Conv1D, Dense, Dropout, Flatten, MaxPooling1D,
+    LSTM, BatchNormalization, Bidirectional, Conv1D, Dense, Dropout,
+    GlobalAveragePooling1D,
 )
 from tensorflow.keras.models import Sequential
+from tensorflow.keras.optimizers import Adam
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # ── Config ──────────────────────────────────────────────────────
 TARGETS = ["download_mbps", "avg_latency"]
-SEQ_LEN = 6
+SEQ_LEN = 12
 SPLIT_HOURS = 48
 TOP_N_ZONES = 5
 LAG_STEPS = 3
@@ -251,7 +255,36 @@ def main() -> None:
     X_test_seq = X_seq[seq_test_mask]
     y_test_seq = y_seq[seq_test_mask]
 
-    print(f"DL windows → Train: {X_train_seq.shape[0]:,}  Test: {X_test_seq.shape[0]:,}")
+    # ── Temporal validation split (prevents data leakage) ──────────
+    # Split training sequences at the 85th percentile of their timestamps
+    # so the model never peeks at future data during validation.
+    train_timestamps = ts_seq[seq_train_mask]
+
+    if len(X_train_seq) >= 2:
+        val_boundary = np.datetime64(
+            int(np.percentile(train_timestamps.astype(np.int64), 85)), "ns"
+        )
+        inner_train = train_timestamps <= val_boundary
+        inner_val = train_timestamps > val_boundary
+
+        if inner_train.sum() < 2 or inner_val.sum() < 2:
+            split_idx = max(1, int(len(X_train_seq) * 0.85))
+            inner_train = np.zeros(len(X_train_seq), dtype=bool)
+            inner_val = np.zeros(len(X_train_seq), dtype=bool)
+            inner_train[:split_idx] = True
+            inner_val[split_idx:] = True
+            print("⚠ Temporal val split produced empty set → using positional 85/15 fallback")
+    else:
+        inner_train = np.ones(len(X_train_seq), dtype=bool)
+        inner_val = np.ones(len(X_train_seq), dtype=bool)
+        print("⚠ Very few training sequences → using same data for fit & val")
+
+    X_fit_seq = X_train_seq[inner_train]
+    y_fit_seq = y_train_seq[inner_train]
+    X_val_seq = X_train_seq[inner_val]
+    y_val_seq = y_train_seq[inner_val]
+
+    print(f"DL windows → Fit: {X_fit_seq.shape[0]:,}  Val: {X_val_seq.shape[0]:,}  Test: {X_test_seq.shape[0]:,}")
 
     # ================================================================
     # Step 3a — XGBoost
@@ -282,29 +315,68 @@ def main() -> None:
         print(f"XGBoost → {tgt:20s}  R²={r2:.4f}  MAE={mae:.3f}  RMSE={rmse:.3f}")
 
     # ================================================================
-    # Step 3b — LSTM
+    # Step 3b — CatBoost
+    # ================================================================
+    cb_models: dict[str, CatBoostRegressor] = {}
+
+    for i, tgt in enumerate(TARGETS):
+        cb_model = CatBoostRegressor(
+            iterations=500,
+            learning_rate=0.05,
+            depth=7,
+            subsample=0.8,
+            random_seed=RANDOM_STATE,
+            early_stopping_rounds=50,
+            verbose=100,
+        )
+        cb_model.fit(
+            X_train_tree, y_train_tree[:, i],
+            eval_set=(X_test_tree, y_test_tree[:, i]),
+        )
+        y_pred = cb_model.predict(X_test_tree)
+        y_true = y_test_tree[:, i]
+
+        r2 = r2_score(y_true, y_pred)
+        mae = mean_absolute_error(y_true, y_pred)
+        rmse = float(np.sqrt(mean_squared_error(y_true, y_pred)))
+
+        cb_models[tgt] = cb_model
+        all_results.append({
+            "Model": "CatBoost", "Target": tgt,
+            "R2": round(r2, 4), "MAE": round(mae, 3), "RMSE": round(rmse, 3),
+        })
+        print(f"CatBoost → {tgt:20s}  R²={r2:.4f}  MAE={mae:.3f}  RMSE={rmse:.3f}")
+
+    # ================================================================
+    # Step 3c — LSTM (Bidirectional + BatchNorm)
     # ================================================================
     tf.random.set_seed(RANDOM_STATE)
-    n_features = X_train_seq.shape[2]
+    n_features = X_fit_seq.shape[2]
     n_targets = len(TARGETS)
 
     model_lstm = Sequential([
-        LSTM(128, return_sequences=True, input_shape=(SEQ_LEN, n_features)),
+        Bidirectional(LSTM(128, return_sequences=True), input_shape=(SEQ_LEN, n_features)),
+        BatchNormalization(),
         Dropout(0.2),
-        LSTM(64),
+        Bidirectional(LSTM(64)),
+        BatchNormalization(),
         Dropout(0.2),
         Dense(32, activation="relu"),
         Dense(n_targets),
     ])
-    model_lstm.compile(optimizer="adam", loss="mse")
+    model_lstm.compile(optimizer=Adam(learning_rate=5e-4), loss="mse")
 
     early_stop = EarlyStopping(
         monitor="val_loss", patience=5, restore_best_weights=True, verbose=1,
     )
+    reduce_lr = ReduceLROnPlateau(
+        monitor="val_loss", factor=0.5, patience=3, min_lr=1e-6, verbose=1,
+    )
     model_lstm.fit(
-        X_train_seq, y_train_seq,
-        epochs=80, batch_size=32, validation_split=0.15,
-        callbacks=[early_stop], verbose=1,
+        X_fit_seq, y_fit_seq,
+        epochs=80, batch_size=16,
+        validation_data=(X_val_seq, y_val_seq),
+        callbacks=[early_stop, reduce_lr], verbose=1,
     )
 
     y_pred_lstm_scaled = model_lstm.predict(X_test_seq, verbose=0)
@@ -322,29 +394,35 @@ def main() -> None:
         print(f"LSTM → {tgt:20s}  R²={r2:.4f}  MAE={mae:.3f}  RMSE={rmse:.3f}")
 
     # ================================================================
-    # Step 3c — 1D CNN
+    # Step 3d — 1D CNN (padding="same" + GAP + BatchNorm)
     # ================================================================
     tf.random.set_seed(RANDOM_STATE)
 
     model_cnn = Sequential([
-        Conv1D(128, kernel_size=3, activation="relu", input_shape=(SEQ_LEN, n_features)),
-        MaxPooling1D(pool_size=2),
-        Conv1D(64, kernel_size=2, activation="relu"),
-        Flatten(),
+        Conv1D(128, kernel_size=3, activation="relu", padding="same",
+               input_shape=(SEQ_LEN, n_features)),
+        BatchNormalization(),
+        Conv1D(64, kernel_size=3, activation="relu", padding="same"),
+        BatchNormalization(),
+        GlobalAveragePooling1D(),
         Dropout(0.2),
         Dense(64, activation="relu"),
         Dense(32, activation="relu"),
         Dense(n_targets),
     ])
-    model_cnn.compile(optimizer="adam", loss="mse")
+    model_cnn.compile(optimizer=Adam(learning_rate=5e-4), loss="mse")
 
     early_stop_cnn = EarlyStopping(
         monitor="val_loss", patience=5, restore_best_weights=True, verbose=1,
     )
+    reduce_lr_cnn = ReduceLROnPlateau(
+        monitor="val_loss", factor=0.5, patience=3, min_lr=1e-6, verbose=1,
+    )
     model_cnn.fit(
-        X_train_seq, y_train_seq,
-        epochs=80, batch_size=32, validation_split=0.15,
-        callbacks=[early_stop_cnn], verbose=1,
+        X_fit_seq, y_fit_seq,
+        epochs=80, batch_size=16,
+        validation_data=(X_val_seq, y_val_seq),
+        callbacks=[early_stop_cnn, reduce_lr_cnn], verbose=1,
     )
 
     y_pred_cnn_scaled = model_cnn.predict(X_test_seq, verbose=0)
@@ -368,15 +446,16 @@ def main() -> None:
     print(f"\nAverage R² by model:\n{avg_r2.to_string()}")
 
     WINNER_NAME = str(avg_r2.idxmax())
-    IS_DL_WINNER = WINNER_NAME in {"LSTM", "1D_CNN"}
     DL_MODELS = {"LSTM": model_lstm, "1D_CNN": model_cnn}
+    TREE_MODEL_DICTS = {"XGBoost": xgb_models, "CatBoost": cb_models}
+    IS_DL_WINNER = WINNER_NAME in DL_MODELS
 
     print(f"\n🏆 Winner: {WINNER_NAME}  (avg R² = {avg_r2.max():.4f})")
 
     if IS_DL_WINNER:
         winner_model = DL_MODELS[WINNER_NAME]
     else:
-        winner_model = xgb_models
+        winner_model = TREE_MODEL_DICTS[WINNER_NAME]
 
     # ================================================================
     # Step 5 — 12-hour autoregressive dashboard forecast
@@ -472,7 +551,7 @@ def main() -> None:
                 feat_row = build_forecast_row(ts, zone, hist_dl, hist_lat, hist_ul, zone_aux)
                 X_row = np.array([[feat_row[col_idx[f]] for f in TREE_FEATURES]])
                 pred_pair = np.array([
-                    float(np.clip(xgb_models[tgt].predict(X_row)[0], 0, None))
+                    float(np.clip(winner_model[tgt].predict(X_row)[0], 0, None))
                     for tgt in TARGETS
                 ])
                 preds.append(pred_pair)
@@ -511,9 +590,10 @@ def main() -> None:
         winner_model.save(model_dir / "forecasting_model.h5")
         print(f"💾 Saved Keras model → forecasting_model.h5")
     else:
+        prefix = WINNER_NAME.lower()   # "xgboost" or "catboost"
         for tgt in TARGETS:
-            p = model_dir / f"xgboost_{tgt}.pkl"
-            joblib.dump(xgb_models[tgt], p)
+            p = model_dir / f"{prefix}_{tgt}.pkl"
+            joblib.dump(winner_model[tgt], p)
             print(f"💾 Saved: {p.name}")
 
     # Pipeline config (scaler + encoding + metadata)
