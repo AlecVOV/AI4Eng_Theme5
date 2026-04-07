@@ -16,13 +16,14 @@ backend/.env
 *.pyc
 
 # ── Data files (stored in S3, too large for git) ──
-backend/data/*.csv
-backend/metrics/*.csv
+backend/data/map_data.csv
+backend/data/cleaned_5g_data.csv
+backend/data/cleaned_5g_scaled.csv
 backend/notebooks/data/
 backend/notebooks/metrics/
 
 # ── Model artifacts (stored in S3) ──
-backend/models/
+# backend/models/
 backend/notebooks/models/
 
 # ── Training logs ──
