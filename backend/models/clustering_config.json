@@ -1,0 +1,20 @@
+{
+  "cluster_features": [
+    "download_mbps_mean",
+    "avg_latency_mean",
+    "cwnd_mean",
+    "retransmission_rate_mean",
+    "jitter_mean"
+  ],
+  "n_pca_components": 2,
+  "scaler_type": "RobustScaler",
+  "winsorise_limits": [
+    0.05,
+    0.05
+  ],
+  "log_transform_features": [
+    "retransmission_rate_mean",
+    "jitter_mean"
+  ],
+  "silhouette_score": 0.419
+}
